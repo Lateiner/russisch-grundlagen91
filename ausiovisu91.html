@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio-Training: Russische Zahlen</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #e67e22;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f0f3f4;
+            --card-white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-white);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p { color: #7f8c8d; margin-bottom: 30px; }
+
+        /* Audio-Bereich */
+        .audio-section {
+            margin-bottom: 40px;
+        }
+
+        .speaker-btn {
+            background: var(--accent);
+            border: none;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+        }
+
+        .speaker-btn:hover { transform: scale(1.05); background: #d35400; }
+        .speaker-btn:active { transform: scale(0.95); }
+
+        .speaker-btn svg {
+            fill: white;
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Antwort-Raster */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        @media (hover: hover) {
+            .option-btn:hover { border-color: var(--accent); background: #fdf2e9; }
+        }
+
+        .option-btn.correct {
+            background-color: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        /* Fortschritt */
+        .progress-container {
+            margin-top: 30px;
+            width: 100%;
+            background: #eee;
+            border-radius: 10px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--success);
+            transition: width 0.3s;
+        }
+
+        #feedback {
+            margin-top: 15px;
+            height: 20px;
+            font-weight: bold;
+        }
+
+        .result-screen {
+            display: none;
+        }
+
+        .btn-restart {
+            margin-top: 20px;
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Responsive Fixes */
+        @media (max-width: 400px) {
+            .options-grid { grid-template-columns: 1fr; }
+            .container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="game-container">
+    <h1>Hören & Zuordnen</h1>
+    <p>Klicke auf den Lautsprecher und wähle die Zahl, die du hörst. Achte auf den Unterschied zwischen [ц] und [ы]!</p>
+
+    <div class="audio-section">
+        <button class="speaker-btn" onclick="playCurrentWord()" id="play-btn">
+            <svg viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16.02C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
+        </button>
+        <div id="feedback"></div>
+    </div>
+
+    <div class="options-grid" id="options-grid">
+        <!-- Buttons werden per JS eingefügt -->
+    </div>
+
+    <div class="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+</div>
+
+<div class="container result-screen" id="result-screen">
+    <h1>Klasse!</h1>
+    <p>Du hast alle Zahlen richtig zugeordnet.</p>
+    <button class="btn-restart" onclick="location.reload()">Nochmal starten</button>
+</div>
+
+<script>
+    const quizData = [
+        { word: "двести", hint: "200" },
+        { word: "триста", hint: "300" },
+        { word: "четыреста", hint: "400" },
+        { word: "пятьсот", hint: "500 - Fokus [ц]" },
+        { word: "шестьсот", hint: "600 - Fokus [ы]" },
+        { word: "семьсот", hint: "700" },
+        { word: "восемьсот", hint: "800" },
+        { word: "девятьсот", hint: "900 - Fokus [ц]" }
+    ];
+
+    let currentStep = 0;
+    let shuffledData = [];
+    let isPlaying = false;
+
+    // Sprach-Setup
+    const synth = window.speechSynthesis;
+    let russianVoice = null;
+
+    function loadVoices() {
+        const voices = synth.getVoices();
+        russianVoice = voices.find(v => v.lang.startsWith('ru'));
+    }
+
+    // Für Chrome/Safari muss das Laden der Stimmen abgewartet werden
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function initGame() {
+        shuffledData = [...quizData].sort(() => Math.random() - 0.5);
+        renderOptions();
+        loadVoices();
+        updateProgress();
+    }
+
+    function renderOptions() {
+        const grid = document.getElementById('options-grid');
+        grid.innerHTML = '';
+        
+        // Die Buttons immer in der gleichen Reihenfolge für das Schriftbild
+        quizData.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = item.word;
+            btn.onclick = () => checkAnswer(item.word, btn);
+            grid.appendChild(btn);
+        });
+    }
+
+    function playCurrentWord() {
+        if (isPlaying) return;
+        
+        const text = shuffledData[currentStep].word;
+        const utter = new SpeechSynthesisUtterance(text);
+        
+        // Stimme explizit auf Russisch setzen
+        loadVoices();
+        if (russianVoice) {
+            utter.voice = russianVoice;
+        } else {
+            utter.lang = 'ru-RU';
+        }
+
+        utter.rate = 0.8; // Etwas langsamer für Lernende
+        
+        utter.onstart = () => { isPlaying = true; };
+        utter.onend = () => { isPlaying = false; };
+        
+        synth.speak(utter);
+    }
+
+    function checkAnswer(selectedWord, btn) {
+        if (isPlaying) return;
+        
+        const correctWord = shuffledData[currentStep].word;
+        const feedback = document.getElementById('feedback');
+
+        if (selectedWord === correctWord) {
+            btn.classList.add('correct');
+            feedback.innerText = "Richtig!";
+            feedback.style.color = "var(--success)";
+            
+            setTimeout(() => {
+                btn.classList.remove('correct');
+                feedback.innerText = "";
+                nextStep();
+            }, 1000);
+        } else {
+            btn.classList.add('wrong');
+            feedback.innerText = "Versuch es nochmal!";
+            feedback.style.color = "var(--error)";
+            
+            setTimeout(() => {
+                btn.classList.remove('wrong');
+                feedback.innerText = "";
+            }, 800);
+        }
+    }
+
+    function nextStep() {
+        currentStep++;
+        updateProgress();
+
+        if (currentStep >= shuffledData.length) {
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'block';
+        } else {
+            // Automatisch abspielen nach kurzer Pause (optional)
+            setTimeout(playCurrentWord, 500);
+        }
+    }
+
+    function updateProgress() {
+        const percent = (currentStep / shuffledData.length) * 100;
+        document.getElementById('progress-bar').style.width = percent + '%';
+    }
+
+    // Start
+    window.onload = initGame;
+</script>
+
+</body>
+</html>
