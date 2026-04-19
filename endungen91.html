@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endungs-Baukasten: Direktes Feedback</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f9fbff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 { text-align: center; font-size: 1.5rem; margin-bottom: 10px; }
+        p.instruction { text-align: center; margin-bottom: 30px; color: #555; }
+
+        .exercise-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            line-height: 1.6;
+            font-size: 1.1rem;
+            border-left: 5px solid #ddd;
+            transition: all 0.3s ease;
+        }
+
+        /* Status-Farben für die Karten */
+        .exercise-card.correct { border-left-color: var(--success); background-color: #f0fff4; }
+        .exercise-card.wrong { border-left-color: var(--error); background-color: #fff5f5; }
+
+        .case-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #666;
+            width: 100%;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        select {
+            padding: 8px;
+            font-size: 1.1rem;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            background-color: #fff;
+            cursor: pointer;
+            color: var(--accent);
+            font-weight: bold;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        select:focus { border-color: var(--accent); }
+
+        /* Status-Farben für Select-Boxen */
+        select.correct-select { border-color: var(--success); color: var(--success); }
+        select.wrong-select { border-color: var(--error); color: var(--error); }
+
+        .feedback-icon {
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        .btn-solution { background-color: #f39c12; }
+        .btn-reset { background-color: #95a5a6; }
+        .btn:active { transform: scale(0.98); }
+
+        #progress-msg {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        @media (max-width: 600px) {
+            .exercise-card { font-size: 1rem; padding: 15px; }
+            select { font-size: 1rem; width: 100%; max-width: 180px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Конструктор окончаний</h1>
+    <p class="instruction">Wähle eine Endung aus. Du erhältst sofort eine Rückmeldung.</p>
+
+    <div id="quiz-container">
+        <!-- Aufgaben werden hier eingefügt -->
+    </div>
+
+    <div id="progress-msg"></div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="showAllSolutions()">Lösung anzeigen</button>
+        <button class="btn btn-reset" onclick="resetAll()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        { pre: "Директор подготовил подарки двуm", post: " сотрудникам.", correct: "стам", options: ["сот", "стам", "стах"], case: "Dativ" },
+        { pre: "В списке нет двух", post: " сотрудников.", correct: "сот", options: ["сот", "стам", "стах"], case: "Genitiv" },
+        { pre: "Мы говорили о двух", post: " сотрудниках.", correct: "стах", options: ["стам", "стами", "стах"], case: "Präpositiv" },
+        { pre: "Режиссер интересовался пятью", post: " опытными актерами.", correct: "стами", options: ["сот", "стам", "стами"], case: "Instrumental" },
+        { pre: "Зрители подарили цветы пяти", post: " актерам.", correct: "стам", options: ["сот", "стам", "стах"], case: "Dativ" },
+        { pre: "В теаtre нет пяти", post: " актрис.", correct: "сот", options: ["сот", "стам", "стами"], case: "Genitiv" },
+        { pre: "Директор интересуется двумя", post: " сотрудниками.", correct: "стами", options: ["сот", "стам", "стами"], case: "Instrumental" },
+        { pre: "Мы говорили на совещании о пяти", post: " актерах.", correct: "стах", options: ["стам", "стами", "стах"], case: "Präpositiv" }
+    ];
+
+    function initQuiz() {
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        document.getElementById('progress-msg').innerText = "";
+
+        quizData.forEach((item, index) => {
+            const card = document.createElement('div');
+            card.className = 'exercise-card';
+            card.id = `card-${index}`;
+
+            let optionsHtml = `<option value="">-- wählen --</option>`;
+            item.options.forEach(opt => {
+                optionsHtml += `<option value="${opt}">${opt}</option>`;
+            });
+
+            card.innerHTML = `
+                <span class="case-label">${item.case}</span>
+                <span>${item.pre}</span>
+                <select id="select-${index}" onchange="checkEntry(${index})">${optionsHtml}</select>
+                <span>${item.post}</span>
+                <span id="feedback-${index}" class="feedback-icon"></span>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function checkEntry(index) {
+        const select = document.getElementById(`select-${index}`);
+        const card = document.getElementById(`card-${index}`);
+        const feedback = document.getElementById(`feedback-${index}`);
+        const val = select.value;
+        const correct = quizData[index].correct;
+
+        if (val === "") {
+            // Zurücksetzen, wenn wieder auf "wählen" geklickt wird
+            select.className = '';
+            card.className = 'exercise-card';
+            feedback.innerText = '';
+            return;
+        }
+
+        if (val === correct) {
+            select.className = 'correct-select';
+            card.className = 'exercise-card correct';
+            feedback.innerText = '✓';
+            feedback.style.color = 'var(--success)';
+        } else {
+            select.className = 'wrong-select';
+            card.className = 'exercise-card wrong';
+            feedback.innerText = '✗';
+            feedback.style.color = 'var(--error)';
+        }
+        
+        updateProgress();
+    }
+
+    function updateProgress() {
+        let correctCount = 0;
+        quizData.forEach((item, index) => {
+            const select = document.getElementById(`select-${index}`);
+            if (select.value === item.correct) correctCount++;
+        });
+
+        const msg = document.getElementById('progress-msg');
+        if (correctCount === quizData.length) {
+            msg.innerText = "Hervorragend! Du hast alle Endungen korrekt bestimmt. 🎉";
+            msg.style.color = "var(--success)";
+        } else if (correctCount > 0) {
+            msg.innerText = `Fortschritt: ${correctCount} von ${quizData.length} richtig.`;
+            msg.style.color = "var(--primary)";
+        }
+    }
+
+    function showAllSolutions() {
+        quizData.forEach((item, index) => {
+            const select = document.getElementById(`select-${index}`);
+            select.value = item.correct;
+            checkEntry(index);
+        });
+    }
+
+    function resetAll() {
+        initQuiz();
+    }
+
+    // Start
+    initQuiz();
+</script>
+
+</body>
+</html>
