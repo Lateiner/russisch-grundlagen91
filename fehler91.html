@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fehlersuche: 10 Herausforderungen</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 30px; }
+
+        .challenge-box {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .challenge-title {
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            color: var(--accent);
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-grow: 1;
+        }
+
+        .option-item {
+            background: #fff;
+            border: 2px solid #eee;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        @media (hover: hover) {
+            .option-item:hover { border-color: var(--accent); background: #f0f7ff; }
+        }
+
+        .option-item.correct-pick {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .option-item.wrong-pick {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 40px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            background: var(--primary);
+            color: white;
+            transition: 0.2s;
+        }
+
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .progress {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Найди ошибку! (10 Aufgaben)</h1>
+    <p class="desc">Klicke auf die Form, die <b>falsch</b> gebildet wurde.</p>
+
+    <div class="challenge-box" id="challenge-box">
+        <div class="challenge-title" id="challenge-title">...</div>
+        <div class="options-list" id="options-list"></div>
+        <div id="feedback" class="feedback"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="next-btn" onclick="nextChallenge()" disabled>Nächste Aufgabe</button>
+        <button class="btn" style="background:#95a5a6" onclick="resetGame()">Neustart</button>
+    </div>
+
+    <div class="progress" id="progress">Aufgabe: 1 / 10</div>
+</div>
+
+<script>
+    const challenges = [
+        {
+            title: "Hunderter im Nominativ (Wer/Was?)",
+            options: ["двести", "триста", "четыреста", "пятьста"],
+            wrongIndex: 3, 
+            expl: "Falsch! Ab 500 lautet die Endung immer -сот (пятьсот)."
+        },
+        {
+            title: "Genitiv der Hunderter (Keine ...)",
+            options: ["двухсот", "трехсот", "четырехста", "пятисот"],
+            wrongIndex: 2, 
+            expl: "Falsch! Der Genitiv endet bei allen Hundertern auf -сот (четырехсот)."
+        },
+        {
+            title: "Dativ der Hunderter (Zu/Für ...)",
+            options: ["двумстам", "пятистам", "восьмистам", "девятистах"],
+            wrongIndex: 3, 
+            expl: "Falsch! Der Dativ braucht die Endung -стам. Девятистах ist Präpositiv."
+        },
+        {
+            title: "Instrumental der Hunderter (Mit ...)",
+            options: ["двумястами", "пятьюстами", "семьюста", "восемьюстами"],
+            wrongIndex: 2, 
+            expl: "Falsch! Der Instrumental endet immer auf -стами (семьюстами)."
+        },
+        {
+            title: "Präpositiv der Hunderter (Über ...)",
+            options: ["о двухстах", "о трехстах", "о пятисот", "о шестистах"],
+            wrongIndex: 2, 
+            expl: "Falsch! Der Präpositiv braucht die Endung -стах (о пятистах)."
+        },
+        {
+            title: "Deklination von тысяча (Tausend)",
+            options: ["нет тысячи", "к тысяче", "вижу тысячу", "о тысячю"],
+            wrongIndex: 3, 
+            expl: "Falsch! Der Präpositiv von тысяча lautet 'о тысяче'. Тысячью ist Instrumental."
+        },
+        {
+            title: "Genitiv von Millionen/Milliarden",
+            options: ["нет миллиона", "нет миллиарда", "нет миллиону", "нет миллиона студентов"],
+            wrongIndex: 2, 
+            expl: "Falsch! Der Genitiv (ohne...) endet auf -а (миллиона). Миллиону ist Dativ."
+        },
+        {
+            title: "Rektion (Welcher Fall folgt nach 500?)",
+            options: ["пятьсот актрис", "пятьсот здания", "пятьсот конвертов", "пятьсот студентов"],
+            wrongIndex: 1, 
+            expl: "Falsch! Nach 500 folgt immer der Genitiv Plural (зданий, nicht здания)."
+        },
+        {
+            title: "Besonderheit bei Tausend (Rektion)",
+            options: ["тысяча конвертов", "тысячи конвертов", "тысячей конверты", "о тысяче конвертов"],
+            wrongIndex: 2, 
+            expl: "Falsch! Nach тысяча steht das Substantiv IMMER im Genitiv Plural (конвертов)."
+        },
+        {
+            title: "Gemischte Formen",
+            options: ["двумястами", "пятистам", "трехсот", "четырестах"],
+            wrongIndex: 3, 
+            expl: "Falsch! Die Zahl 400 wird im Präpositiv zu 'четырехстах'."
+        }
+    ];
+
+    let currentStep = 0;
+    let solved = false;
+
+    function initChallenge() {
+        const challenge = challenges[currentStep];
+        document.getElementById('challenge-title').innerText = challenge.title;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('feedback').style.background = "transparent";
+        document.getElementById('next-btn').disabled = true;
+        document.getElementById('progress').innerText = `Aufgabe: ${currentStep + 1} / ${challenges.length}`;
+        solved = false;
+
+        const list = document.getElementById('options-list');
+        list.innerHTML = '';
+
+        challenge.options.forEach((word, index) => {
+            const div = document.createElement('div');
+            div.className = 'option-item';
+            div.innerText = word;
+            div.onclick = () => checkChoice(index, div);
+            list.appendChild(div);
+        });
+    }
+
+    function checkChoice(index, element) {
+        if (solved) return;
+        const challenge = challenges[currentStep];
+        const feedback = document.getElementById('feedback');
+
+        if (index === challenge.wrongIndex) {
+            element.classList.add('correct-pick');
+            feedback.innerText = challenge.expl;
+            feedback.style.background = "#d4edda";
+            feedback.style.color = "#155724";
+            solved = true;
+            document.getElementById('next-btn').disabled = false;
+            if (currentStep === challenges.length - 1) {
+                document.getElementById('next-btn').innerText = "Ergebnis anzeigen";
+            }
+        } else {
+            element.classList.add('wrong-pick', 'shake');
+            feedback.innerText = "Dieses Wort ist richtig gebeugt. Suche die falsche Form!";
+            feedback.style.background = "#f8d7da";
+            feedback.style.color = "#721c24";
+            setTimeout(() => {
+                element.classList.remove('wrong-pick', 'shake');
+            }, 800);
+        }
+    }
+
+    function nextChallenge() {
+        if (currentStep < challenges.length - 1) {
+            currentStep++;
+            initChallenge();
+        } else {
+            showFinalResult();
+        }
+    }
+
+    function showFinalResult() {
+        const box = document.getElementById('challenge-box');
+        box.innerHTML = `
+            <h2 style="color:var(--success)">Glückwunsch!</h2>
+            <p>Du hast alle 10 Fehler in den russischen Zahlwörtern erfolgreich gefunden.</p>
+            <p style="font-size:0.9rem; color:#666">Du beherrschst nun die Deklination von 200-900 sowie Tausend und Millionen.</p>
+        `;
+        document.getElementById('next-btn').style.display = "none";
+    }
+
+    function resetGame() {
+        location.reload();
+    }
+
+    initChallenge();
+</script>
+
+</body>
+</html>
