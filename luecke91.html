@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lückentext: Russische Zahlwörter</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #fdfefe;
+            --word-bg: #ebf5fb;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f4f7f9;
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 250px;
+            gap: 20px;
+        }
+
+        h1 { grid-column: 1 / -1; text-align: center; font-size: 1.5rem; }
+        p.desc { grid-column: 1 / -1; text-align: center; margin-bottom: 20px; color: #666; }
+
+        /* Sätze-Bereich */
+        .sentences {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .sentence-item {
+            margin-bottom: 20px;
+            line-height: 1.8;
+            font-size: 1.1rem;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .drop-slot {
+            display: inline-block;
+            min-width: 120px;
+            height: 30px;
+            border-bottom: 2px dashed var(--accent);
+            margin: 0 5px;
+            vertical-align: middle;
+            text-align: center;
+            font-weight: bold;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .drop-slot.filled { border-bottom-style: solid; color: var(--primary); }
+        .drop-slot.correct { color: var(--success); border-color: var(--success); }
+        .drop-slot.wrong { color: var(--error); border-color: var(--error); }
+
+        /* Wortbank */
+        .word-bank {
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: fit-content;
+        }
+
+        .word-tile {
+            background: var(--word-bg);
+            border: 1px solid var(--accent);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .word-tile:hover { background: #d6eaf8; }
+        .word-tile.selected { background: var(--accent); color: white; transform: scale(1.05); }
+        .word-tile.used { opacity: 0.3; cursor: default; pointer-events: none; }
+
+        /* Controls */
+        .controls {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn-solution { background: #f39c12; color: white; }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .word-bank {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                order: -1; /* Wortbank oben auf dem Handy */
+            }
+            .word-tile { flex: 1 1 100px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Заполни пропуски (Lückentext)</h1>
+    <p class="desc">Klicke auf ein Wort in der Wortbank und dann auf die passende Lücke im Satz.</p>
+
+    <div class="sentences" id="sentence-list">
+        <!-- Sätze werden hier eingefügt -->
+    </div>
+
+    <div class="word-bank" id="word-bank">
+        <!-- Wörter werden hier eingefügt -->
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="showSolution()">Lösung anzeigen</button>
+        <button class="btn btn-reset" onclick="resetGame()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        { id: 0, textBefore: "В списке нет", textAfter: "сотрудников компании.", answer: "двухсот" },
+        { id: 1, textBefore: "Директор подготовил подарки", textAfter: "сотрудникам.", answer: "двумстам" },
+        { id: 2, textBefore: "Я вижу", textAfter: "сотрудников.", answer: "двести" },
+        { id: 3, textBefore: "Директор интересуется", textAfter: "сотрудниками.", answer: "двумястами" },
+        { id: 4, textBefore: "Мы говорили на совещании о", textAfter: "сотрудниках.", answer: "двухстах" },
+        { id: 5, textBefore: "В театре нет", textAfter: "актрис.", answer: "пятисот" },
+        { id: 6, textBefore: "Мы поговорили о", textAfter: "актерах и актрисах.", answer: "пятистах" },
+        { id: 7, textBefore: "Режиссер интересовался", textAfter: "опытными актерами.", answer: "пятьюстами" }
+    ];
+
+    // Wortbank mischen
+    const words = quizData.map(item => item.answer).sort(() => Math.random() - 0.5);
+
+    let selectedWordTile = null;
+
+    function initGame() {
+        const sentenceList = document.getElementById('sentence-list');
+        const wordBank = document.getElementById('word-bank');
+        
+        sentenceList.innerHTML = '';
+        wordBank.innerHTML = '';
+        selectedWordTile = null;
+
+        // Wortbank rendern
+        words.forEach((word, index) => {
+            const tile = document.createElement('div');
+            tile.className = 'word-tile';
+            tile.innerText = word;
+            tile.onclick = () => selectWord(tile);
+            wordBank.appendChild(tile);
+        });
+
+        // Sätze rendern
+        quizData.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'sentence-item';
+            div.innerHTML = `
+                ${index + 1}. ${item.textBefore} 
+                <span class="drop-slot" id="slot-${index}" onclick="placeWord(${index})">...</span> 
+                ${item.textAfter}
+            `;
+            sentenceList.appendChild(div);
+        });
+    }
+
+    function selectWord(tile) {
+        if (tile.classList.contains('used')) return;
+        
+        if (selectedWordTile) {
+            selectedWordTile.classList.remove('selected');
+        }
+        
+        selectedWordTile = tile;
+        tile.classList.add('selected');
+    }
+
+    function placeWord(index) {
+        const slot = document.getElementById(`slot-${index}`);
+        
+        // Wenn bereits ein Wort im Slot ist, geben wir es zurück in die Bank
+        if (slot.classList.contains('filled')) {
+            const oldWord = slot.innerText;
+            const tiles = document.querySelectorAll('.word-tile');
+            tiles.forEach(t => {
+                if (t.innerText === oldWord && t.classList.contains('used')) {
+                    t.classList.remove('used');
+                }
+            });
+            slot.innerText = "...";
+            slot.className = "drop-slot";
+        }
+
+        // Wenn ein neues Wort ausgewählt ist, setzen wir es ein
+        if (selectedWordTile) {
+            const chosenWord = selectedWordTile.innerText;
+            slot.innerText = chosenWord;
+            slot.classList.add('filled');
+            
+            // Direktes Feedback
+            if (chosenWord === quizData[index].answer) {
+                slot.classList.add('correct');
+            } else {
+                slot.classList.add('wrong');
+            }
+
+            selectedWordTile.classList.remove('selected');
+            selectedWordTile.classList.add('used');
+            selectedWordTile = null;
+        }
+    }
+
+    function showSolution() {
+        quizData.forEach((item, index) => {
+            const slot = document.getElementById(`slot-${index}`);
+            slot.innerText = item.answer;
+            slot.className = "drop-slot filled correct";
+        });
+        const tiles = document.querySelectorAll('.word-tile');
+        tiles.forEach(t => t.classList.add('used'));
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    // Start
+    initGame();
+</script>
+
+</body>
+</html>
