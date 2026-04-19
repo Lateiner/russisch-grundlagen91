@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deklination: Hunderter sortieren</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --gen-color: #e67e22;
+            --dat-color: #9b59b6;
+            --ins-color: #1abc9c;
+            --pre-color: #34495e;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.6rem; margin-bottom: 10px; }
+        p.desc { margin-bottom: 25px; color: #555; }
+
+        /* Kartenstapel */
+        .card-deck {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            min-height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .word-card {
+            background: white;
+            border: 2px solid var(--accent);
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .word-card.selected {
+            background: var(--accent);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Körbe/Fälle */
+        .baskets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .basket {
+            background: white;
+            border-top: 8px solid #ccc;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 150px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .basket:active { transform: scale(0.98); }
+
+        .basket h2 { font-size: 1.1rem; margin-bottom: 15px; pointer-events: none; }
+        .basket .count { font-size: 0.9rem; color: #888; pointer-events: none; }
+
+        .basket.gen { border-top-color: var(--gen-color); }
+        .basket.dat { border-top-color: var(--dat-color); }
+        .basket.ins { border-top-color: var(--ins-color); }
+        .basket.pre { border-top-color: var(--pre-color); }
+
+        /* Feedback */
+        #message {
+            font-weight: bold;
+            height: 30px;
+            margin-bottom: 20px;
+        }
+
+        .correct { color: var(--success); }
+        .wrong { color: var(--error); animation: shake 0.4s; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+        }
+
+        .btn-reset { background: #95a5a6; }
+        .btn-solution { background: #f39c12; }
+
+        #solution-box {
+            display: none;
+            margin-top: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        @media (max-width: 500px) {
+            .baskets-grid { grid-template-columns: 1fr 1fr; }
+            .word-card { font-size: 1.1rem; width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Kategorisierung nach Fällen</h1>
+    <p class="desc">Klicke eine Wortkarte an und wähle dann den richtigen Korb (Kasus) aus.</p>
+
+    <div id="message"></div>
+
+    <div class="card-deck" id="card-deck">
+        <!-- Karte erscheint hier -->
+    </div>
+
+    <div class="baskets-grid">
+        <div class="basket gen" onclick="assignTo('Genitiv')">
+            <h2>Родительный</h2>
+            <p>(Genitiv)</p>
+            <div class="count" id="count-Genitiv">0 Karten</div>
+        </div>
+        <div class="basket dat" onclick="assignTo('Dativ')">
+            <h2>Дательный</h2>
+            <p>(Dativ)</p>
+            <div class="count" id="count-Dativ">0 Karten</div>
+        </div>
+        <div class="basket ins" onclick="assignTo('Instrumental')">
+            <h2>Творительный</h2>
+            <p>(Instrumental)</p>
+            <div class="count" id="count-Instrumental">0 Karten</div>
+        </div>
+        <div class="basket pre" onclick="assignTo('Präpositiv')">
+            <h2>Предложный</h2>
+            <p>(Präpositiv)</p>
+            <div class="count" id="count-Präpositiv">0 Karten</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="toggleSolution()">Lösung anzeigen</button>
+        <button class="btn btn-reset" onclick="resetGame()">Neustart</button>
+    </div>
+
+    <div id="solution-box">
+        <b>Übersicht der Formen:</b><br><br>
+        • Родительный (-сот): двухсот, пятисот, восьмисот<br>
+        • Дательный (-стам): двумстам, пятистам, восьмистам<br>
+        • Творительный (-стами): двумястами, пятьюстами, восемьюстами<br>
+        • Предложный (-стах): двухстах, пятистах, восьмистах
+    </div>
+</div>
+
+<script>
+    const allWords = [
+        { word: "двухсот", case: "Genitiv" },
+        { word: "пятисот", case: "Genitiv" },
+        { word: "восьмисот", case: "Genitiv" },
+        { word: "двумстам", case: "Dativ" },
+        { word: "пятистам", case: "Dativ" },
+        { word: "восьмистам", case: "Dativ" },
+        { word: "двумястами", case: "Instrumental" },
+        { word: "пятьюстами", case: "Instrumental" },
+        { word: "восемьюстами", case: "Instrumental" },
+        { word: "двухстах", case: "Präpositiv" },
+        { word: "пятистах", case: "Präpositiv" },
+        { word: "восьмистах", case: "Präpositiv" }
+    ];
+
+    let currentCard = null;
+    let pool = [];
+    let stats = { Genitiv: 0, Dativ: 0, Instrumental: 0, Präpositiv: 0 };
+
+    function initGame() {
+        pool = [...allWords].sort(() => Math.random() - 0.5);
+        stats = { Genitiv: 0, Dativ: 0, Instrumental: 0, Präpositiv: 0 };
+        updateStatsDisplay();
+        document.getElementById('solution-box').style.display = 'none';
+        document.getElementById('message').innerText = "";
+        nextCard();
+    }
+
+    function nextCard() {
+        const deck = document.getElementById('card-deck');
+        deck.innerHTML = "";
+        
+        if (pool.length === 0) {
+            document.getElementById('message').innerText = "Hervorragend! Alle Karten sind sortiert.";
+            document.getElementById('message').className = "correct";
+            return;
+        }
+
+        currentCard = pool.pop();
+        const cardDiv = document.createElement('div');
+        cardDiv.className = "word-card selected";
+        cardDiv.innerText = currentCard.word;
+        deck.appendChild(cardDiv);
+    }
+
+    function assignTo(caseName) {
+        if (!currentCard) return;
+
+        const msg = document.getElementById('message');
+        if (currentCard.case === caseName) {
+            msg.innerText = `Richtig! ${currentCard.word} ist ${caseName}.`;
+            msg.className = "correct";
+            stats[caseName]++;
+            updateStatsDisplay();
+            nextCard();
+        } else {
+            msg.innerText = `Falsch. Versuch es nochmal!`;
+            msg.className = "wrong";
+            setTimeout(() => msg.className = "", 500);
+        }
+    }
+
+    function updateStatsDisplay() {
+        for (let key in stats) {
+            document.getElementById(`count-${key}`).innerText = `${stats[key]} Karten`;
+        }
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    function toggleSolution() {
+        const box = document.getElementById('solution-box');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
