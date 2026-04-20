@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fall-Zuordnung: Große Zahlen</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .progress {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        .sentence-display {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 30px;
+            border-left: 5px solid var(--accent);
+            line-height: 1.5;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .option-btn:hover {
+            border-color: var(--accent);
+            background: #f0f7ff;
+        }
+
+        .option-btn.correct {
+            background-color: var(--success) !important;
+            border-color: var(--success) !important;
+            color: white !important;
+            cursor: default;
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error) !important;
+            border-color: var(--error) !important;
+            color: white !important;
+            cursor: default;
+        }
+
+        .feedback-box {
+            min-height: 60px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            line-height: 1.4;
+            padding: 0 10px;
+        }
+
+        .btn-next {
+            padding: 12px 40px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .sentence-display { font-size: 1.1rem; padding: 20px; }
+            .container { padding: 15px; }
+            .option-btn { padding: 12px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <div class="progress" id="progress">Aufgabe 1 von 8</div>
+    <h1>Падежи: Большие числа</h1>
+    <p>Wähle die richtige Form für die Lücke aus.</p>
+
+    <div class="sentence-display" id="sentence">
+        <!-- Satz -->
+    </div>
+
+    <div class="options-grid" id="options">
+        <!-- Optionen -->
+    </div>
+
+    <div class="feedback-box" id="feedback"></div>
+
+    <button class="btn-next" id="next-btn" onclick="nextQuestion()">Nächste Aufgabe</button>
+</div>
+
+<script>
+    const quizData = [
+        {
+            sentence: "В ... городов России можно увидеть музеи.",
+            correct: "тысяче",
+            options: ["тысяче", "тысячу", "тысячи"],
+            expl: "Präpositiv (в чём?): 'тысяcha' ist weiblich und bekommt hier die Endung -е."
+        },
+        {
+            sentence: "На почте нет ... конвертов.",
+            correct: "тысяchi",
+            options: ["тысячи", "тысячу", "тысячей"],
+            expl: "Genitiv (чего?): Die Endung im Genitiv Singular für weibliche Wörter auf -а ist -и."
+        },
+        {
+            sentence: "В этой стране больше ... жителей.",
+            correct: "миллиона",
+            options: ["миллиона", "миллиону", "миллионом"],
+            expl: "Genitiv nach 'больше': 'миллион' ist männlich und bekommt im Genitiv die Endung -а."
+        },
+        {
+            sentence: "Они написали письмо ... студентов.",
+            correct: "миллиону",
+            options: ["миллиону", "миллиона", "миллионе"],
+            expl: "Dativ (чему?): Männliche Substantive bekommen im Dativ die Endung -у."
+        },
+        {
+            sentence: "Я вижу ... звёзд auf dem Himmel.",
+            correct: "миллиард",
+            options: ["миллиард", "миллиарда", "миллиарду"],
+            expl: "Akkusativ (что?): Bei unbelebten männlichen Substantiven entspricht der Akkusativ dem Nominativ."
+        },
+        {
+            sentence: "Мы говорили о ... новых пользователей.",
+            correct: "миллиарде",
+            options: ["миллиарде", "миллиарда", "миллиардом"],
+            expl: "Präpositiv (о чём?): Männliche Substantive auf Konsonant enden im Präpositiv auf -е."
+        },
+        {
+            sentence: "Я подошла к ... конвертов und nahm sie.",
+            correct: "тысяче",
+            options: ["тысяче", "тысячи", "тысячу"],
+            expl: "Dativ (к чему?): Weibliche Wörter auf -а haben im Dativ die Endung -е."
+        },
+        {
+            sentence: "Он интересуется ... интересных фактов.",
+            correct: "миллионом",
+            options: ["миллионом", "миллиона", "миллионе"],
+            expl: "Instrumental (чем?): Männliche Substantive haben im Instrumental die Endung -ом."
+        }
+    ];
+
+    let currentIdx = 0;
+    let answered = false;
+
+    // Hilfsfunktion zum Mischen
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    function loadQuestion() {
+        answered = false;
+        const data = quizData[currentIdx];
+        document.getElementById('progress').innerText = `Aufgabe ${currentIdx + 1} von ${quizData.length}`;
+        document.getElementById('sentence').innerHTML = data.sentence.replace("...", "<span style='color:var(--accent)'>_______</span>");
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('next-btn').style.display = "none";
+
+        const optionsGrid = document.getElementById('options');
+        optionsGrid.innerHTML = '';
+
+        // Optionen für diese Frage mischen
+        const currentOptions = shuffleArray([...data.options]);
+
+        currentOptions.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => handleSelect(opt, btn);
+            optionsGrid.appendChild(btn);
+        });
+    }
+
+    function handleSelect(selected, btn) {
+        if (answered) return;
+        
+        const data = quizData[currentIdx];
+        const feedback = document.getElementById('feedback');
+        answered = true;
+
+        if (selected === data.correct) {
+            btn.classList.add('correct');
+            feedback.innerHTML = `<span style="color:var(--success)">Richtig!</span><br>${data.expl}`;
+            document.getElementById('sentence').innerHTML = data.sentence.replace("...", `<span style="color:var(--success)">${selected}</span>`);
+        } else {
+            btn.classList.add('wrong');
+            feedback.innerHTML = `<span style="color:var(--error)">Falsch.</span> Die richtige Form ist <b>${data.correct}</b>.<br>${data.expl}`;
+            
+            // Markiere den richtigen Button zusätzlich grün
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(b => {
+                if (b.innerText === data.correct) b.classList.add('correct');
+            });
+        }
+
+        document.getElementById('next-btn').style.display = "inline-block";
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < quizData.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-container').innerHTML = `
+            <h1 style="color:var(--success)">Sehr gut! 🎉</h1>
+            <p>Du hast alle Aufgaben zur Deklination von Tausend, Million und Milliarde abgeschlossen.</p>
+            <p>Denk daran: Diese Wörter verhalten sich grammatikalisch wie ganz normale Substantive.</p>
+            <button class="btn-next" style="display:inline-block; margin-top: 20px;" onclick="location.reload()">Neustart</button>
+        `;
+    }
+
+    // Spielstart
+    loadQuestion();
+</script>
+
+</body>
+</html>
