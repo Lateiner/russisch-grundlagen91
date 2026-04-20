@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rektion-Quiz: Tausend, Million, Milliarde</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f0f2f5;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .progress-bar {
+            height: 8px;
+            width: 100%;
+            background: #eee;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        #progress-inner {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            transition: width 0.4s ease;
+        }
+
+        .question-box {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            min-height: 60px;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #e1e8ed;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        @media (hover: hover) {
+            .option-btn:hover {
+                border-color: var(--accent);
+                background-color: #f8fbff;
+            }
+        }
+
+        .option-btn.correct {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+
+        #feedback-area {
+            margin-top: 25px;
+            display: none;
+            padding: 20px;
+            border-radius: 12px;
+            background: #fdfdfd;
+            border: 1px solid #eee;
+            text-align: left;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-status {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .explanation {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .next-btn {
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 20px; }
+            .question-box { font-size: 1rem; }
+            .option-btn { font-size: 0.9rem; padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="progress-bar"><div id="progress-inner"></div></div>
+    
+    <div id="quiz-content">
+        <div class="question-box" id="question">Lade Frage...</div>
+
+        <div class="options-container" id="options"></div>
+
+        <div id="feedback-area">
+            <span class="feedback-status" id="result-status"></span>
+            <p class="explanation" id="explanation"></p>
+            <button class="next-btn" id="next-btn" onclick="handleNext()">Nächste Frage</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        {
+            q: "In welchem Fall stehen Substantive nach dem Wort миллиард?",
+            options: [
+                "Immer im Genitiv Plural",
+                "Immer im gleichen Fall wie die Zahl (Kongruenz)"
+            ],
+            correct: 0,
+            expl: "Wörter wie миллиард, миллион und тысяча fungieren als Substantive. Sie erzwingen in ALLEN Fällen den Genitiv Plural des darauf folgenden Wortes."
+        },
+        {
+            q: "Satz: 'Директор написал письма миллиону ...'. Wie geht es weiter?",
+            options: [
+                "студентам (Dativ)",
+                "студентов (Genitiv Plural)"
+            ],
+            correct: 1,
+            expl: "Obwohl миллиону im Dativ steht, verlangt es als 'substantivisches Zahlwort' den Genitiv Plural des Substantivs."
+        },
+        {
+            q: "Welches Geschlecht haben die Wörter миллион und миллиард?",
+            options: [
+                "Männlich (мужской род)",
+                "Weiblich (женский род)"
+            ],
+            correct: 0,
+            expl: "Миллион und миллиард enden auf einen harten Konsonanten und sind daher männlich."
+        },
+        {
+            q: "In 'в тысяче ...' steht 'тысяча' im Präpositiv. Welchen Fall braucht das Substantiv?",
+            options: [
+                "Genitiv Plural",
+                "Präpositiv"
+            ],
+            correct: 0,
+            expl: "Egal in welchem Fall 'тысяча' steht, das folgende Wort bleibt starr im Genitiv Plural (z.B. в тысяче городов)."
+        },
+        {
+            q: "Was ist der Unterschied zwischen 'двести' und 'тысяча' im Dativ?",
+            options: [
+                "Es gibt keinen Unterschied.",
+                "Двести zeigt Kongruenz (двумстам сотрудникам), tausend zeigt Rektion (тысяче сотрудников)."
+            ],
+            correct: 1,
+            expl: "Die Zahlen 200-900 passen sich im Dativ dem Substantiv an. Tausend hingegen steht wie ein Substantiv für sich und lässt das Folgewort im Genitiv Plural."
+        },
+        {
+            q: "Wie lautet die Rektion im Satz 'Больше миллиона ...'?",
+            options: [
+                "достопримечательности (Genitiv Singular)",
+                "достопримечательностей (Genitiv Plural)"
+            ],
+            correct: 1,
+            expl: "Nach Million steht das Substantiv ausnahmslos im Genitiv Plural."
+        },
+        {
+            q: "In welchem Fall stehen Adjektive nach dem Wort миллион?",
+            options: [
+                "Im Genitiv Plural",
+                "Im Nominativ Plural"
+            ],
+            correct: 0,
+            expl: "Nach Million, Milliarde und Tausend stehen sowohl Substantive als auch Adjektive im Genitiv Plural."
+        },
+        {
+            q: "Was ist im Instrumental richtig?",
+            options: [
+                "интересовались тысячью конвертами",
+                "интересовались тысячью конвертов"
+            ],
+            correct: 1,
+            expl: "Richtig ist 'конвертов'. Selbst im Instrumental verlangt 'тысяча' den Genitiv Plural des Substantivs."
+        }
+    ];
+
+    let currentQuestion = 0;
+    let answered = false;
+
+    function loadQuestion() {
+        answered = false;
+        const data = quizData[currentQuestion];
+        document.getElementById('question').innerText = data.q;
+        document.getElementById('progress-inner').style.width = (currentQuestion / quizData.length * 100) + "%";
+        
+        const optionsContainer = document.getElementById('options');
+        optionsContainer.innerHTML = '';
+        document.getElementById('feedback-area').style.display = 'none';
+
+        data.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => selectOption(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function selectOption(index, btn) {
+        if (answered) return;
+        answered = true;
+
+        const data = quizData[currentQuestion];
+        const allButtons = document.querySelectorAll('.option-btn');
+        
+        if (index === data.correct) {
+            btn.classList.add('correct');
+            document.getElementById('result-status').innerText = "Richtig! ✓";
+            document.getElementById('result-status').style.color = "var(--success)";
+        } else {
+            btn.classList.add('wrong');
+            allButtons[data.correct].classList.add('correct');
+            document.getElementById('result-status').innerText = "Leider falsch";
+            document.getElementById('result-status').style.color = "var(--error)";
+        }
+
+        document.getElementById('explanation').innerText = data.expl;
+        document.getElementById('feedback-area').style.display = 'block';
+        
+        if (currentQuestion === quizData.length - 1) {
+            document.getElementById('next-btn').innerText = "Quiz abschließen";
+        }
+    }
+
+    function handleNext() {
+        if (currentQuestion < quizData.length - 1) {
+            currentQuestion++;
+            loadQuestion();
+        } else {
+            showFinal();
+        }
+    }
+
+    function showFinal() {
+        document.getElementById('progress-inner').style.width = "100%";
+        document.getElementById('quiz-content').innerHTML = `
+            <h2 style="color:var(--success)">Sehr gut!</h2>
+            <p>Du hast alle 8 Fragen zur Rektion von Tausend, Million und Milliarde bearbeitet.</p>
+            <p>Denk dran: Diese Wörter verlangen IMMER den Genitiv Plural!</p>
+            <button class="next-btn" style="margin-top:20px" onclick="location.reload()">Nochmal versuchen</button>
+        `;
+    }
+
+    loadQuestion();
+</script>
+
+</body>
+</html>
