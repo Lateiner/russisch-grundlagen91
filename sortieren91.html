@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zahlenstrahl: Sofort-Feedback</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f9;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 30px; line-height: 1.4; }
+
+        /* Wort-Pool */
+        .pool-label { font-weight: bold; margin-bottom: 10px; color: #7f8c8d; text-transform: uppercase; font-size: 0.8rem; }
+        .word-pool {
+            background: rgba(255,255,255,0.6);
+            border: 2px dashed #ccc;
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            min-height: 100px;
+            margin-bottom: 40px;
+        }
+
+        .word-card {
+            background: var(--card-bg);
+            border: 1px solid #ddd;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .word-card.hidden { opacity: 0.3; pointer-events: none; }
+
+        /* Zeitstrahl / Zielbereich */
+        .timeline-container {
+            background: white;
+            padding: 30px 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 15px;
+        }
+
+        .slot {
+            background: #f9f9f9;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .slot .pos-label {
+            font-size: 0.7rem;
+            color: #bbb;
+            margin-bottom: 4px;
+        }
+
+        /* Feedback-Farben */
+        .slot.correct { background-color: var(--success); color: white; border-color: var(--success); }
+        .slot.wrong { background-color: var(--error); color: white; border-color: var(--error); }
+        
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 15px;
+            text-transform: uppercase;
+            padding: 0 10px;
+        }
+
+        /* Controls */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .btn-solution { background: #f39c12; }
+        .btn-reset { background: #95a5a6; }
+
+        #feedback-msg { margin-top: 20px; font-weight: bold; min-height: 24px; }
+
+        @media (max-width: 600px) {
+            .slots-grid { grid-template-columns: 1fr 1fr; }
+            .word-card { font-size: 1rem; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Числовая прямая (Zahlenstrahl)</h1>
+    <p class="desc">Ordne die Wörter von <b>klein</b> nach <b>groß</b> an. <br>Klicke ein Wort an, um es zu platzieren. Klicke auf ein Wort im Strahl, um es zu entfernen.</p>
+
+    <div class="pool-label">Zahlwörter</div>
+    <div class="word-pool" id="word-pool"></div>
+
+    <div class="timeline-container">
+        <div class="slots-grid" id="slots-grid"></div>
+        <div class="scale-labels">
+            <span>Меньше (Kleiner)</span>
+            <span>Больше (Größer)</span>
+        </div>
+    </div>
+
+    <div id="feedback-msg"></div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="showSolution()">Lösung zeigen</button>
+        <button class="btn btn-reset" onclick="resetGame()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    const data = [
+        { word: "двести", val: 200 },
+        { word: "триста", val: 300 },
+        { word: "пятьсот", val: 500 },
+        { word: "восемьсот", val: 800 },
+        { word: "девятьсот", val: 900 },
+        { word: "тысяча", val: 1000 },
+        { word: "миллион", val: 1000000 },
+        { word: "миллиард", val: 1000000000 }
+    ];
+
+    // Die mathematisch korrekte Reihenfolge
+    const sortedData = [...data].sort((a, b) => a.val - b.val);
+    
+    let currentSlots = new Array(data.length).fill(null);
+
+    function initGame() {
+        const pool = document.getElementById('word-pool');
+        const grid = document.getElementById('slots-grid');
+        const feedback = document.getElementById('feedback-msg');
+        
+        pool.innerHTML = '';
+        grid.innerHTML = '';
+        feedback.innerText = '';
+        currentSlots.fill(null);
+
+        // Zufällig gemischte Wörter für den Pool
+        const shuffled = [...data].sort(() => Math.random() - 0.5);
+
+        shuffled.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            card.innerText = item.word;
+            card.id = `card-${item.val}`;
+            card.onclick = () => placeWord(item);
+            pool.appendChild(card);
+        });
+
+        // Leere Slots erstellen
+        for (let i = 0; i < data.length; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            slot.id = `slot-${i}`;
+            slot.innerHTML = `<span class="pos-label">${i + 1}</span>`;
+            slot.onclick = () => removeWord(i);
+            grid.appendChild(slot);
+        }
+    }
+
+    function placeWord(item) {
+        // Finde den ersten freien Slot
+        const freeIndex = currentSlots.indexOf(null);
+        if (freeIndex === -1) return;
+
+        currentSlots[freeIndex] = item;
+        document.getElementById(`card-${item.val}`).classList.add('hidden');
+        
+        updateSlotVisuals(freeIndex);
+        checkWinCondition();
+    }
+
+    function removeWord(index) {
+        if (currentSlots[index]) {
+            const item = currentSlots[index];
+            document.getElementById(`card-${item.val}`).classList.remove('hidden');
+            currentSlots[index] = null;
+            
+            // Ansicht des Slots zurücksetzen
+            const slot = document.getElementById(`slot-${index}`);
+            slot.className = 'slot';
+            slot.innerHTML = `<span class="pos-label">${index + 1}</span>`;
+            
+            document.getElementById('feedback-msg').innerText = "";
+        }
+    }
+
+    function updateSlotVisuals(index) {
+        const slot = document.getElementById(`slot-${index}`);
+        const item = currentSlots[index];
+        
+        if (!item) return;
+
+        slot.innerHTML = `<span class="pos-label">${index + 1}</span>${item.word}`;
+        
+        // Sofortiges Feedback: Ist dieses Wort an der mathematisch richtigen Stelle?
+        if (item.val === sortedData[index].val) {
+            slot.classList.add('correct');
+        } else {
+            slot.classList.add('wrong');
+        }
+    }
+
+    function checkWinCondition() {
+        const filledCount = currentSlots.filter(s => s !== null).length;
+        if (filledCount === data.length) {
+            const allCorrect = currentSlots.every((item, idx) => item.val === sortedData[idx].val);
+            const feedback = document.getElementById('feedback-msg');
+            if (allCorrect) {
+                feedback.innerText = "Hervorragend! Alle Zahlen sind korrekt geordnet. 🎉";
+                feedback.style.color = "var(--success)";
+            } else {
+                feedback.innerText = "Einige Positionen stimmen noch nicht. Klicke auf die roten Felder, um sie zu korrigieren.";
+                feedback.style.color = "var(--error)";
+            }
+        }
+    }
+
+    function showSolution() {
+        // Reset zuerst
+        resetGame();
+        
+        // Sofort die richtige Reihenfolge einsetzen
+        sortedData.forEach((item, index) => {
+            currentSlots[index] = item;
+            document.getElementById(`card-${item.val}`).classList.add('hidden');
+            updateSlotVisuals(index);
+        });
+        
+        document.getElementById('feedback-msg').innerText = "Lösung angezeigt.";
+        document.getElementById('feedback-msg').style.color = "var(--primary)";
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    // Spielstart
+    initGame();
+</script>
+
+</body>
+</html>
