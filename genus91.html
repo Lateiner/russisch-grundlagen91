@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genus-Sortierung: 8 Wörter</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --masculine: #3498db;
+            --feminine: #e74c3c;
+            --success: #27ae60;
+            --bg: #f4f7f6;
+            --card-white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 30px; }
+
+        /* Wort-Pool */
+        .word-pool {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            min-height: 100px;
+        }
+
+        .word-card {
+            background: var(--card-white);
+            border: 2px solid #ddd;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .word-card.selected {
+            border-color: var(--primary);
+            background-color: #ebf5fb;
+            transform: scale(1.05);
+        }
+
+        .word-card.hidden {
+            display: none;
+        }
+
+        /* Sortier-Spalten */
+        .columns-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .column {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 250px;
+            border-top: 8px solid #ccc;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .column.m-col { border-top-color: var(--masculine); }
+        .column.f-col { border-top-color: var(--feminine); }
+
+        .column h2 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .column .label-ru { font-size: 1.1rem; display: block; margin-bottom: 5px; pointer-events: none; }
+        .column .label-de { font-size: 0.8rem; color: #7f8c8d; pointer-events: none; }
+
+        .sorted-word {
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            padding: 8px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-weight: 600;
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn-reset {
+            padding: 12px 25px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #feedback { 
+            margin-top: 20px; 
+            font-weight: bold; 
+            color: var(--success); 
+            font-size: 1.2rem;
+            min-height: 1.5em;
+        }
+
+        @media (max-width: 600px) {
+            .columns-container { grid-template-columns: 1fr; }
+            .word-card { font-size: 1rem; flex: 1 1 40%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Род существительных (Genus)</h1>
+    <p class="desc">Klicke auf ein Wort und dann auf die richtige Spalte, um das Geschlecht zu bestimmen.</p>
+
+    <div class="word-pool" id="word-pool">
+        <!-- 8 Wörter werden hier geladen -->
+    </div>
+
+    <div class="columns-container">
+        <div class="column m-col" onclick="assignTo('m')">
+            <h2>
+                <span class="label-ru">Мужской род</span>
+                <span class="label-de">(Männlich)</span>
+            </h2>
+            <div id="m-list"></div>
+        </div>
+        <div class="column f-col" onclick="assignTo('f')">
+            <h2>
+                <span class="label-ru">Женский род</span>
+                <span class="label-de">(Weiblich)</span>
+            </h2>
+            <div id="f-list"></div>
+        </div>
+    </div>
+
+    <div id="feedback"></div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="initGame()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    // 8 Wörter basierend auf den Beispielen aus Iras Video
+    const wordsData = [
+        { id: 0, word: "тысяча", gender: "f" },
+        { id: 1, word: "миллион", gender: "m" },
+        { id: 2, word: "миллиард", gender: "m" },
+        { id: 3, word: "компания", gender: "f" },
+        { id: 4, word: "актриса", gender: "f" },
+        { id: 5, word: "актер", gender: "m" },
+        { id: 6, word: "сотрудник", gender: "m" },
+        { id: 7, word: "конверт", gender: "m" }
+    ];
+
+    let selectedWordId = null;
+    let solvedCount = 0;
+
+    function initGame() {
+        const poolEl = document.getElementById('word-pool');
+        const mList = document.getElementById('m-list');
+        const fList = document.getElementById('f-list');
+        const feedback = document.getElementById('feedback');
+
+        poolEl.innerHTML = '';
+        mList.innerHTML = '';
+        fList.innerHTML = '';
+        feedback.innerText = '';
+        solvedCount = 0;
+        selectedWordId = null;
+
+        // Wörter mischen
+        const shuffledWords = [...wordsData].sort(() => Math.random() - 0.5);
+
+        shuffledWords.forEach((item) => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            card.innerText = item.word;
+            card.id = 'card-' + item.id;
+            card.onclick = (e) => {
+                e.stopPropagation();
+                selectWord(item.id);
+            };
+            poolEl.appendChild(card);
+        });
+    }
+
+    function selectWord(id) {
+        document.querySelectorAll('.word-card').forEach(c => c.classList.remove('selected'));
+        selectedWordId = id;
+        document.getElementById('card-' + id).classList.add('selected');
+    }
+
+    function assignTo(gender) {
+        if (selectedWordId === null) return;
+
+        const item = wordsData.find(w => w.id === selectedWordId);
+        const card = document.getElementById('card-' + selectedWordId);
+
+        if (item.gender === gender) {
+            // Richtig
+            const list = document.getElementById(gender + '-list');
+            const div = document.createElement('div');
+            div.className = 'sorted-word';
+            div.innerText = item.word;
+            list.appendChild(div);
+
+            card.classList.add('hidden');
+            selectedWordId = null;
+            solvedCount++;
+
+            if (solvedCount === wordsData.length) {
+                document.getElementById('feedback').innerText = "Hervorragend! 🎉 Alle Wörter korrekt zugeordnet.";
+            }
+        } else {
+            // Falsch: Kurzes rotes Aufleuchten
+            card.style.borderColor = 'var(--feminine)';
+            card.classList.remove('selected');
+            setTimeout(() => {
+                card.style.borderColor = '#ddd';
+            }, 500);
+            selectedWordId = null;
+        }
+    }
+
+    // Spiel zum ersten Mal starten
+    initGame();
+</script>
+
+</body>
+</html>
