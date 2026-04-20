@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deklinationstabelle: Sofort-Feedback</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: var(--card);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 25px; font-size: 0.95rem; }
+
+        /* Tabelle */
+        .declination-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            table-layout: fixed;
+        }
+
+        .declination-table th, .declination-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        .declination-table th {
+            background-color: #f8f9fa;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #7f8c8d;
+        }
+
+        .case-name { font-weight: bold; font-size: 0.9rem; }
+        .case-question { font-size: 0.8rem; color: #95a5a6; display: block; }
+
+        /* Ziel-Slots */
+        .drop-slot {
+            width: 100%;
+            min-height: 42px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            background: #fafafa;
+        }
+
+        /* Feedback-Zustände */
+        .drop-slot.correct { background-color: var(--success); color: white; border-color: var(--success); border-style: solid; }
+        .drop-slot.wrong { background-color: var(--error); color: white; border-color: var(--error); border-style: solid; }
+
+        /* Wort-Pool */
+        .word-pool {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            min-height: 60px;
+        }
+
+        .word-tile {
+            background: white;
+            border: 1px solid #dee2e6;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .word-tile.selected { background-color: var(--accent); color: white; border-color: var(--accent); }
+        .word-tile.used { opacity: 0.2; cursor: default; pointer-events: none; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            color: white;
+        }
+
+        .btn-solution { background: #f39c12; }
+        .btn-reset { background: #95a5a6; }
+
+        #progress-msg { margin-top: 15px; font-weight: bold; min-height: 24px; }
+
+        @media (max-width: 600px) {
+            .declination-table th:nth-child(2), 
+            .declination-table td:nth-child(2) { display: none; } 
+            .declination-table th, .declination-table td { padding: 8px 5px; }
+            .case-name { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Склонение: СЕМЬСОТ (700)</h1>
+    <p class="desc">Klicke ein Wort an und dann auf das passende Feld in der Tabelle. Du erhältst sofort Feedback.</p>
+
+    <div class="word-pool" id="word-pool"></div>
+
+    <table class="declination-table">
+        <thead>
+            <tr>
+                <th width="35%">Падеж</th>
+                <th width="25%">Вопрос</th>
+                <th width="40%">Форма (700)</th>
+            </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+    </table>
+
+    <div id="progress-msg"></div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="showSolution()">Lösung anzeigen</button>
+        <button class="btn btn-reset" onclick="resetGame()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    const declinationData = [
+        { case: "Именительный", quest: "кто? что?", answer: "семьсот" },
+        { case: "Родительный", quest: "кого? чего?", answer: "семисот" },
+        { case: "Дательный", quest: "кому? чему?", answer: "семистам" },
+        { case: "Винительный", quest: "кого? что?", answer: "семьсот" },
+        { case: "Творительный", quest: "кем? чем?", answer: "семьюстами" },
+        { case: "Предложный", quest: "о ком? о чём?", answer: "семистах" }
+    ];
+
+    let selectedTile = null;
+
+    function initGame() {
+        const pool = document.getElementById('word-pool');
+        const body = document.getElementById('table-body');
+        const msg = document.getElementById('progress-msg');
+        
+        pool.innerHTML = '';
+        body.innerHTML = '';
+        msg.innerText = '';
+        selectedTile = null;
+
+        // Pool mischen
+        const allAnswers = declinationData.map(d => d.answer).sort(() => Math.random() - 0.5);
+        
+        allAnswers.forEach((word) => {
+            const tile = document.createElement('div');
+            tile.className = 'word-tile';
+            tile.innerText = word;
+            tile.onclick = () => selectTile(tile);
+            pool.appendChild(tile);
+        });
+
+        // Tabelle bauen
+        declinationData.forEach((data, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><span class="case-name">${data.case}</span></td>
+                <td><span class="case-question">${data.quest}</span></td>
+                <td><div class="drop-slot" id="slot-${idx}" onclick="placeTile(${idx})">...</div></td>
+            `;
+            body.appendChild(tr);
+        });
+    }
+
+    function selectTile(tile) {
+        document.querySelectorAll('.word-tile').forEach(t => t.classList.remove('selected'));
+        selectedTile = tile;
+        tile.classList.add('selected');
+    }
+
+    function placeTile(index) {
+        const slot = document.getElementById(`slot-${index}`);
+        
+        // Wenn bereits ein Wort im Slot ist: Zurück in den Pool
+        if (slot.innerText !== "...") {
+            const oldWord = slot.innerText;
+            const tiles = document.querySelectorAll('.word-tile');
+            for (let t of tiles) {
+                if (t.innerText === oldWord && t.classList.contains('used')) {
+                    t.classList.remove('used');
+                    break;
+                }
+            }
+            slot.innerText = "...";
+            slot.className = "drop-slot";
+        }
+
+        // Wenn eine Kachel ausgewählt ist: Einsetzen & Prüfen
+        if (selectedTile) {
+            const word = selectedTile.innerText;
+            slot.innerText = word;
+            
+            // Sofort-Feedback Logik
+            if (word === declinationData[index].answer) {
+                slot.className = "drop-slot correct";
+            } else {
+                slot.className = "drop-slot wrong";
+            }
+
+            selectedTile.classList.add('used');
+            selectedTile.classList.remove('selected');
+            selectedTile = null;
+            checkWin();
+        }
+    }
+
+    function checkWin() {
+        const slots = document.querySelectorAll('.drop-slot');
+        let correctCount = 0;
+        slots.forEach(s => { if(s.classList.contains('correct')) correctCount++; });
+
+        if (correctCount === declinationData.length) {
+            document.getElementById('progress-msg').innerText = "Hervorragend! Alles richtig ausgefüllt. 🎉";
+            document.getElementById('progress-msg').style.color = "var(--success)";
+        }
+    }
+
+    function showSolution() {
+        resetGame();
+        declinationData.forEach((data, idx) => {
+            const slot = document.getElementById(`slot-${idx}`);
+            slot.innerText = data.answer;
+            slot.className = "drop-slot correct";
+        });
+        document.querySelectorAll('.word-tile').forEach(t => t.classList.add('used'));
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
