@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satzbau-Baukasten: 8 Aufgaben</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --word-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 850px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 25px; line-height: 1.4; }
+
+        .sentence-builder {
+            background: white;
+            border: 2px dashed #bdc3c7;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 100px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .word-chip {
+            background: var(--word-bg);
+            border: 2px solid var(--accent);
+            padding: 10px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            user-select: none;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .word-chip:active { transform: scale(0.95); }
+        .word-chip.in-pool { color: var(--accent); }
+        .word-chip.in-builder { background: var(--accent); color: white; }
+
+        .word-pool {
+            background: rgba(255,255,255,0.5);
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-check { background: var(--accent); color: white; }
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn-solution { background: #f39c12; color: white; }
+
+        #feedback { margin-top: 20px; font-weight: bold; min-height: 24px; }
+        .correct-text { color: var(--success); }
+        .error-text { color: var(--error); }
+
+        .progress { margin-bottom: 10px; font-size: 0.9rem; color: #7f8c8d; }
+        .hidden { display: none; }
+
+        @media (max-width: 500px) {
+            .word-chip { font-size: 0.95rem; padding: 8px 12px; }
+            .sentence-builder { padding: 15px; min-height: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Конструктор предложений</h1>
+    <p class="desc">Klicke die Wörter in der richtigen Reihenfolge an. <br>Achte auf die Fälle (Kasus) der Zahlwörter und Substantive!</p>
+    
+    <div class="progress" id="progress">Satz 1 von 8</div>
+
+    <div class="sentence-builder" id="builder"></div>
+
+    <div class="word-pool" id="pool"></div>
+
+    <div id="feedback"></div>
+
+    <div class="controls">
+        <button class="btn btn-check" onclick="checkSentence()">Prüfen</button>
+        <button class="btn btn-solution" onclick="showSolution()">Lösung</button>
+        <button class="btn btn-reset" onclick="resetCurrent()">Reset</button>
+        <button class="btn" id="next-btn" style="display:none; background: var(--success); color: white;" onclick="nextSentence()">Nächster Satz</button>
+    </div>
+</div>
+
+<script>
+    const sentences = [
+        {
+            correct: ["В", "списке", "нет", "двухсот", "сотрудников", "компании"],
+            task: "200 Genitiv + Genitiv Plural"
+        },
+        {
+            correct: ["Зрители", "подарили", "цветы", "пятистам", "актерам"],
+            task: "500 Dativ + Dativ (Kongruenz)"
+        },
+        {
+            correct: ["Режиссер", "интересовался", "пятьюстами", "опытными", "актерами"],
+            task: "500 Instrumental + Instrumental (Kongruenz)"
+        },
+        {
+            correct: ["Я", "вижу", "двести", "новых", "зданий"],
+            task: "200 Akkusativ + Genitiv Plural"
+        },
+        {
+            correct: ["В", "тысяче", "городов", "России", "есть", "музеи"],
+            task: "Tausend (immer + Genitiv Plural)"
+        },
+        {
+            correct: ["Они", "написали", "письма", "миллиону", "студентов"],
+            task: "Million (immer + Genitiv Plural)"
+        },
+        {
+            correct: ["Мы", "спросили", "о", "миллиарде", "новых", "пользователей"],
+            task: "Milliarde (immer + Genitiv Plural)"
+        },
+        {
+            correct: ["Директор", "гордится", "восемьюстами", "лучшими", "работниками"],
+            task: "800 Instrumental + Instrumental (Kongruenz)"
+        }
+    ];
+
+    let currentIndex = 0;
+    let currentBuilderWords = [];
+
+    function initSentence() {
+        const sentence = sentences[currentIndex];
+        const pool = document.getElementById('pool');
+        const builder = document.getElementById('builder');
+        const feedback = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+
+        document.getElementById('progress').innerText = `Satz ${currentIndex + 1} von ${sentences.length}`;
+        feedback.innerText = "";
+        nextBtn.style.display = "none";
+        builder.innerHTML = "";
+        currentBuilderWords = [];
+
+        // Wörter mischen
+        const shuffled = [...sentence.correct].sort(() => Math.random() - 0.5);
+        
+        pool.innerHTML = "";
+        shuffled.forEach((word) => {
+            const chip = document.createElement('div');
+            chip.className = 'word-chip in-pool';
+            chip.innerText = word;
+            chip.onclick = () => addWord(word, chip);
+            pool.appendChild(chip);
+        });
+    }
+
+    function addWord(word, chipElement) {
+        currentBuilderWords.push(word);
+        chipElement.classList.add('hidden');
+        renderBuilder();
+    }
+
+    function renderBuilder() {
+        const builder = document.getElementById('builder');
+        builder.innerHTML = "";
+        currentBuilderWords.forEach((word, index) => {
+            const chip = document.createElement('div');
+            chip.className = 'word-chip in-builder';
+            chip.innerText = word;
+            chip.onclick = () => removeWord(index, word);
+            builder.appendChild(chip);
+        });
+    }
+
+    function removeWord(index, word) {
+        currentBuilderWords.splice(index, 1);
+        const poolChips = document.querySelectorAll('#pool .word-chip');
+        for (let chip of poolChips) {
+            if (chip.innerText === word && chip.classList.contains('hidden')) {
+                chip.classList.remove('hidden');
+                break;
+            }
+        }
+        renderBuilder();
+    }
+
+    function checkSentence() {
+        const correct = sentences[currentIndex].correct;
+        const feedback = document.getElementById('feedback');
+
+        if (currentBuilderWords.length !== correct.length) {
+            feedback.innerText = "Der Satz ist noch unvollständig.";
+            feedback.className = "error-text";
+            return;
+        }
+
+        const isCorrect = currentBuilderWords.every((word, i) => word === correct[i]);
+
+        if (isCorrect) {
+            feedback.innerText = "Richtig! Gut gemacht.";
+            feedback.className = "correct-text";
+            document.getElementById('next-btn').style.display = "inline-block";
+        } else {
+            feedback.innerText = "Falsche Reihenfolge oder falscher Fall.";
+            feedback.className = "error-text";
+        }
+    }
+
+    function showSolution() {
+        currentBuilderWords = [...sentences[currentIndex].correct];
+        renderBuilder();
+        document.querySelectorAll('#pool .word-chip').forEach(c => c.classList.add('hidden'));
+        checkSentence();
+    }
+
+    function resetCurrent() {
+        initSentence();
+    }
+
+    function nextSentence() {
+        currentIndex++;
+        if (currentIndex < sentences.length) {
+            initSentence();
+        } else {
+            document.getElementById('builder').innerHTML = "<h3>Hervorragend! Alle 8 Sätze sind korrekt.</h3>";
+            document.getElementById('pool').style.display = "none";
+            document.getElementById('next-btn').style.display = "none";
+            document.getElementById('feedback').innerText = "";
+            document.querySelectorAll('.btn').forEach(b => b.style.display = "none");
+        }
+    }
+
+    initSentence();
+</script>
+
+</body>
+</html>
