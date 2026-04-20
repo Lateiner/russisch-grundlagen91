@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russisch: Kongruenz-Trainer</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 30px; line-height: 1.4; }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+            min-height: 450px;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .word-card {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease, opacity 0.8s ease, transform 0.8s ease;
+            user-select: none;
+            min-height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Auswahl durch den Schüler */
+        .word-card.selected {
+            border-color: var(--accent);
+            background-color: #ebf5fb;
+            color: var(--accent);
+            transform: scale(1.02);
+        }
+
+        /* Manueller Erfolg (vor dem Verschwinden) */
+        .word-card.matched-manual {
+            background-color: var(--success) !important;
+            border-color: var(--success) !important;
+            color: white !important;
+            pointer-events: none;
+        }
+
+        /* Langsames Verschwinden (nur beim manuellen Spiel) */
+        .word-card.fade-out {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+
+        /* Farbcodes für die Lösung (bleiben sichtbar) */
+        .pair-1 { background-color: #e74c3c !important; color: white !important; border-color: #c0392b !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-2 { background-color: #3498db !important; color: white !important; border-color: #2980b9 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-3 { background-color: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-4 { background-color: #f1c40f !important; color: #2c3e50 !important; border-color: #f39c12 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-5 { background-color: #9b59b6 !important; color: white !important; border-color: #8e44ad !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-6 { background-color: #e67e22 !important; color: white !important; border-color: #d35400 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .btn-solution { background: #f39c12; }
+        .btn-restart { background: var(--primary); }
+        .btn:active { transform: scale(0.95); }
+
+        #message { margin-top: 20px; font-weight: bold; min-height: 24px; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; border-color: var(--error) !important; }
+
+        @media (max-width: 500px) {
+            .game-board { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Число и Существительное</h1>
+    <p class="desc">
+        <b>Manuell:</b> Korrekte Paare verschwinden.<br>
+        <b>Lösung:</b> Alle Paare werden farbig markiert und bleiben sichtbar.
+    </p>
+
+    <div class="game-board">
+        <div class="column" id="col-left"></div>
+        <div class="column" id="col-right"></div>
+    </div>
+
+    <div id="message"></div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="showSolution()">Lösung anzeigen</button>
+        <button class="btn btn-restart" onclick="initGame()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        { id: 1, left: "двести", right: "сотрудников" },
+        { id: 2, left: "двумстам", right: "сотрудникам" },
+        { id: 3, left: "двумястами", right: "сотрудниками" },
+        { id: 4, left: "пятисот", right: "актрис" },
+        { id: 5, left: "пятистам", right: "актерам" },
+        { id: 6, left: "пятьюстами", right: "актерами" }
+    ];
+
+    let selectedLeft = null;
+    let selectedRight = null;
+    let isProcessing = false;
+    let solutionMode = false;
+
+    function initGame() {
+        const colLeft = document.getElementById('col-left');
+        const colRight = document.getElementById('col-right');
+        document.getElementById('message').innerText = "";
+        colLeft.innerHTML = '';
+        colRight.innerHTML = '';
+        selectedLeft = null;
+        selectedRight = null;
+        isProcessing = false;
+        solutionMode = false;
+
+        const shuffledLeft = [...quizData].sort(() => Math.random() - 0.5);
+        const shuffledRight = [...quizData].sort(() => Math.random() - 0.5);
+
+        shuffledLeft.forEach(item => colLeft.appendChild(createCard(item.left, item.id, 'left')));
+        shuffledRight.forEach(item => colRight.appendChild(createCard(item.right, item.id, 'right')));
+    }
+
+    function createCard(text, id, side) {
+        const card = document.createElement('div');
+        card.className = 'word-card';
+        card.innerText = text;
+        card.dataset.id = id;
+        card.dataset.side = side;
+        card.onclick = handleCardClick;
+        return card;
+    }
+
+    function handleCardClick() {
+        if (isProcessing || solutionMode || this.classList.contains('matched-manual')) return;
+
+        if (this.dataset.side === 'left') {
+            if (selectedLeft) selectedLeft.classList.remove('selected');
+            selectedLeft = this;
+        } else {
+            if (selectedRight) selectedRight.classList.remove('selected');
+            selectedRight = this;
+        }
+        this.classList.add('selected');
+
+        if (selectedLeft && selectedRight) {
+            checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        isProcessing = true;
+        if (selectedLeft.dataset.id === selectedRight.dataset.id) {
+            // Erfolg im manuellen Spiel
+            const l = selectedLeft;
+            const r = selectedRight;
+            l.classList.add('matched-manual');
+            r.classList.add('matched-manual');
+            
+            setTimeout(() => {
+                if (!solutionMode) { // Nur verschwinden, wenn nicht zwischendurch "Lösung" geklickt wurde
+                    l.classList.add('fade-out');
+                    r.classList.add('fade-out');
+                }
+                isProcessing = false;
+            }, 600);
+
+            selectedLeft = null;
+            selectedRight = null;
+        } else {
+            // Fehler
+            selectedLeft.classList.add('shake');
+            selectedRight.classList.add('shake');
+            setTimeout(() => {
+                selectedLeft.classList.remove('selected', 'shake');
+                selectedRight.classList.remove('selected', 'shake');
+                selectedLeft = null;
+                selectedRight = null;
+                isProcessing = false;
+            }, 800);
+        }
+    }
+
+    function showSolution() {
+        solutionMode = true;
+        const allCards = document.querySelectorAll('.word-card');
+        
+        // Zuerst alle Karten wieder einblenden und Effekte stoppen
+        allCards.forEach(card => {
+            card.classList.remove('fade-out', 'selected', 'matched-manual', 'shake');
+        });
+
+        // Dann Paare farbig markieren
+        quizData.forEach(item => {
+            const pairClass = `pair-${item.id}`;
+            const cards = document.querySelectorAll(`.word-card[data-id="${item.id}"]`);
+            cards.forEach(c => c.classList.add(pairClass));
+        });
+
+        document.getElementById('message').innerText = "Lösung: Zusammengehörige Paare haben die gleiche Farbe.";
+        document.getElementById('message').style.color = "var(--primary)";
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
