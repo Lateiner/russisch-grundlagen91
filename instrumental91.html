@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instrumental-Wahl: Sofort-Feedback</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .progress {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .instruction {
+            margin-bottom: 25px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .sentence-box {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--accent);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            font-weight: 600;
+            touch-action: manipulation;
+        }
+
+        /* Sofortiges Feedback-Design */
+        .option-btn.correct-hit {
+            background-color: var(--success) !important;
+            border-color: var(--success) !important;
+            color: white !important;
+            cursor: default;
+        }
+
+        .option-btn.wrong-hit {
+            background-color: var(--error) !important;
+            border-color: var(--error) !important;
+            color: white !important;
+            cursor: default;
+        }
+
+        .feedback-text {
+            min-height: 30px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .btn-next {
+            padding: 12px 35px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            display: none;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .options-grid { grid-template-columns: 1fr; }
+            .container { padding: 20px; }
+            .sentence-box { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <div class="progress" id="progress">Aufgabe 1 von 8</div>
+    <h1>Творительный падеж: тысяча</h1>
+    <p class="instruction">Finde beide korrekten Instrumental-Formen (<b>тысячей</b> und <b>тысячью</b>).</p>
+
+    <div class="sentence-box" id="sentence">
+        <!-- Satz -->
+    </div>
+
+    <div class="options-grid" id="options">
+        <!-- Optionen -->
+    </div>
+
+    <div class="feedback-text" id="feedback-text"></div>
+
+    <button class="btn-next" id="next-btn" onclick="nextQuestion()">Nächste Aufgabe</button>
+</div>
+
+<script>
+    const questions = [
+        { s: "Директор интересовался ... сотрудников.", correct: ["тысячей", "тысячью"], others: ["тысячи", "тысячу"] },
+        { s: "Мы довольны этой ... конвертов.", correct: ["тысячей", "тысячью"], others: ["тысяче", "тысяч"] },
+        { s: "Перед этой ... студентов выступил ректор.", correct: ["тысячей", "тысячью"], others: ["тысячам", "тысячу"] },
+        { s: "Они гордятся ... проданных книг.", correct: ["тысячей", "тысячью"], others: ["тысячи", "тысячу"] },
+        { s: "Между первой и второй ... километров.", correct: ["тысячей", "тысячью"], others: ["тысяче", "тысячи"] },
+        { s: "Работа над ... новых проектов закончена.", correct: ["тысячей", "тысячью"], others: ["тысячу", "тысяче"] },
+        { s: "Он руководит ... рабочих.", correct: ["тысячей", "тысячью"], others: ["тысячам", "тысяч"] },
+        { s: "С этой ... новых зрителей театр стал популярнее.", correct: ["тысячей", "тысячью"], others: ["тысячи", "тысячу"] }
+    ];
+
+    let currentIdx = 0;
+    let foundCorrectInThisTurn = 0;
+
+    function loadQuestion() {
+        foundCorrectInThisTurn = 0;
+        const q = questions[currentIdx];
+        
+        document.getElementById('progress').innerText = `Aufgabe ${currentIdx + 1} von ${questions.length}`;
+        document.getElementById('sentence').innerText = q.s.replace("...", "_______");
+        document.getElementById('feedback-text').innerText = "";
+        document.getElementById('next-btn').style.display = "none";
+
+        const optionsGrid = document.getElementById('options');
+        optionsGrid.innerHTML = '';
+
+        // Alle Optionen mischen
+        const allOpts = [...q.correct, ...q.others].sort(() => Math.random() - 0.5);
+
+        allOpts.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => handleOptionClick(opt, btn);
+            optionsGrid.appendChild(btn);
+        });
+    }
+
+    function handleOptionClick(selectedOpt, btn) {
+        if (btn.classList.contains('correct-hit') || btn.classList.contains('wrong-hit')) return;
+
+        const q = questions[currentIdx];
+        const isCorrect = q.correct.includes(selectedOpt);
+
+        if (isCorrect) {
+            btn.classList.add('correct-hit');
+            foundCorrectInThisTurn++;
+        } else {
+            btn.classList.add('wrong-hit');
+        }
+
+        // Wenn beide Richtigen gefunden wurden
+        if (foundCorrectInThisTurn === 2) {
+            finishTask();
+        }
+    }
+
+    function finishTask() {
+        const feedback = document.getElementById('feedback-text');
+        feedback.innerText = "Richtig! „тысячей“ und „тысячью“ sind beides korrekte Formen.";
+        feedback.style.color = "var(--success)";
+        
+        // Alle Buttons sperren
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => {
+            if (!b.classList.contains('correct-hit')) {
+                b.style.opacity = "0.6";
+                b.style.cursor = "default";
+            }
+        });
+
+        document.getElementById('next-btn').style.display = "inline-block";
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < questions.length) {
+            loadQuestion();
+        } else {
+            showFinal();
+        }
+    }
+
+    function showFinal() {
+        document.getElementById('quiz-container').innerHTML = `
+            <h1>Hervorragend! 🎉</h1>
+            <p>Du hast alle 8 Aufgaben gelöst. Du weißt jetzt sicher, dass <b>тысяча</b> im Instrumental zwei Formen haben kann.</p>
+            <button class="btn-next" style="display:inline-block" onclick="location.reload()">Nochmal spielen</button>
+        `;
+    }
+
+    window.onload = loadQuestion;
+</script>
+
+</body>
+</html>
