@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontext-Check: Russische Zahlen</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #fdfefe;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f0f2f5;
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .progress {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        /* Szenario-Box */
+        .scenario-box {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #eee;
+        }
+
+        .scenario-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .scenario-desc {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+
+        .sentence {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary);
+            line-height: 1.4;
+        }
+
+        .highlight-blank {
+            color: var(--accent);
+            border-bottom: 2px dashed var(--accent);
+            padding: 0 10px;
+        }
+
+        /* Antwort-Optionen */
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        @media (hover: hover) {
+            .option-btn:hover {
+                border-color: var(--accent);
+                background-color: #f0f7ff;
+            }
+        }
+
+        .option-btn.correct {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+
+        /* Feedback & Controls */
+        #feedback {
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 50px;
+            line-height: 1.4;
+        }
+
+        .next-btn {
+            margin-top: 10px;
+            padding: 12px 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+            width: 100%;
+        }
+
+        .btn-solution {
+            margin-top: 20px;
+            background: none;
+            border: none;
+            color: #95a5a6;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 20px; }
+            .sentence { font-size: 1.1rem; }
+            .option-btn { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <div class="progress" id="progress">Aufgabe 1 von 6</div>
+    
+    <div class="scenario-box">
+        <span class="scenario-icon" id="scenario-icon">🎭</span>
+        <div class="scenario-desc" id="scenario-desc">Du bist im Theater. Auf der Bühne stehen viele Schauspielerinnen.</div>
+        <div class="sentence" id="sentence-text">В театре <span class="highlight-blank">...</span>.</div>
+    </div>
+
+    <div class="options-list" id="options-list">
+        <!-- Buttons werden hier eingefügt -->
+    </div>
+
+    <div id="feedback"></div>
+
+    <button class="next-btn" id="next-btn" onclick="handleNext()">Nächste Aufgabe</button>
+    <button class="btn-solution" id="solution-btn" onclick="showSolution()">Lösung anzeigen</button>
+</div>
+
+<script>
+    const quizData = [
+        {
+            icon: "🎭",
+            desc: "Szenario: Im Theater stehen viele Schauspielerinnen auf der Bühne.",
+            sentence: "В театре <span class='highlight-blank'>...</span>.",
+            options: ["пятьсот актрис", "пятистам актрисам", "о пятистах актрисах"],
+            correct: 0,
+            expl: "Nominativ: Wer oder was ist im Theater? -> fünfhundert Schauspielerinnen (пятьсот актрис)."
+        },
+        {
+            icon: "💐",
+            desc: "Szenario: Die Zuschauer geben den Schauspielern Blumen.",
+            sentence: "Зрители подарили цветы <span class='highlight-blank'>...</span>.",
+            options: ["пятьсот актеров", "пятистам актерам", "пятьюстами актерами"],
+            correct: 1,
+            expl: "Dativ: Wem haben sie Blumen geschenkt? -> den fünfhundert Schauspielern (пятистам актерам)."
+        },
+        {
+            icon: "🏢",
+            desc: "Szenario: Der Direktor interessiert sich für seine erfahrenen Mitarbeiter.",
+            sentence: "Режиссер интересовался <span class='highlight-blank'>...</span>.",
+            options: ["пятисот актеров", "пятистам актерам", "пятьюстами актерами"],
+            correct: 2,
+            expl: "Instrumental: Für wen interessiert er sich? -> für die fünfhundert Schauspieler (пятьюстами актерами)."
+        },
+        {
+            icon: "📄",
+            desc: "Szenario: In der Namensliste fehlen Mitarbeiter.",
+            sentence: "В списке нет <span class='highlight-blank'>...</span>.",
+            options: ["двести сотрудников", "двухсот сотрудников", "двухстах сотрудниках"],
+            correct: 1,
+            expl: "Genitiv: Wer oder was ist nicht da? -> keine zweihundert Mitarbeiter (двухсот сотрудников)."
+        },
+        {
+            icon: "✉️",
+            desc: "Szenario: Eine Million Briefumschläge liegen auf der Post.",
+            sentence: "На почте лежит <span class='highlight-blank'>...</span>.",
+            options: ["миллион конвертов", "миллиона конвертов", "миллионом конвертов"],
+            correct: 0,
+            expl: "Nominativ: Million (миллион) verlangt immer den Genitiv Plural des Substantivs (конвертов)."
+        },
+        {
+            icon: "🗣️",
+            desc: "Szenario: Wir haben in der Konferenz über die Mitarbeiter gesprochen.",
+            sentence: "Мы говорили о <span class='highlight-blank'>...</span>.",
+            options: ["двести сотрудников", "двухсот сотрудников", "двухстах сотрудниках"],
+            correct: 2,
+            expl: "Präpositiv: Über wen haben wir gesprochen? -> über zweihundert Mitarbeiter (о двухстах сотрудниках)."
+        }
+    ];
+
+    let currentIdx = 0;
+    let answered = false;
+
+    function loadQuestion() {
+        answered = false;
+        const data = quizData[currentIdx];
+        
+        document.getElementById('progress').innerText = `Aufgabe ${currentIdx + 1} von ${quizData.length}`;
+        document.getElementById('scenario-icon').innerText = data.icon;
+        document.getElementById('scenario-desc').innerText = data.desc;
+        document.getElementById('sentence-text').innerHTML = data.sentence;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('next-btn').style.display = "none";
+        document.getElementById('solution-btn').style.display = "inline-block";
+
+        const optionsList = document.getElementById('options-list');
+        optionsList.innerHTML = '';
+
+        data.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(index, btn);
+            optionsList.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIdx, btn) {
+        if (answered) return;
+        answered = true;
+
+        const data = quizData[currentIdx];
+        const feedback = document.getElementById('feedback');
+
+        if (selectedIdx === data.correct) {
+            btn.classList.add('correct');
+            feedback.innerHTML = `<span style="color:var(--success)">Richtig!</span><br>${data.expl}`;
+        } else {
+            btn.classList.add('wrong');
+            feedback.innerHTML = `<span style="color:var(--error)">Falsch.</span><br>${data.expl}`;
+            // Richtigen Button markieren
+            document.querySelectorAll('.option-btn')[data.correct].classList.add('correct');
+        }
+
+        document.getElementById('next-btn').style.display = "block";
+        document.getElementById('solution-btn').style.display = "none";
+    }
+
+    function showSolution() {
+        if (answered) return;
+        const data = quizData[currentIdx];
+        checkAnswer(data.correct, document.querySelectorAll('.option-btn')[data.correct]);
+    }
+
+    function handleNext() {
+        currentIdx++;
+        if (currentIdx < quizData.length) {
+            loadQuestion();
+        } else {
+            showFinalResult();
+        }
+    }
+
+    function showFinalResult() {
+        document.getElementById('quiz-container').innerHTML = `
+            <h2>Klasse! 🎓</h2>
+            <p>Du hast alle Szenarien gemeistert und die richtigen Fälle für die Zahlwörter gewählt.</p>
+            <button class="next-btn" style="display:block" onclick="location.reload()">Neustart</button>
+        `;
+    }
+
+    // Start
+    loadQuestion();
+</script>
+
+</body>
+</html>
