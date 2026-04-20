@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regel-Check: Russische Zahlen</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        p.desc { color: #666; margin-bottom: 30px; line-height: 1.4; }
+
+        .matching-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+            min-height: 500px; /* Stabilität */
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .item {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease, opacity 1s ease, transform 1s ease;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            user-select: none;
+        }
+
+        /* Status: Auswahl */
+        .item.selected {
+            border-color: var(--accent);
+            background-color: #ebf5fb;
+            color: var(--accent);
+            transform: scale(1.02);
+        }
+
+        /* Status: Manuell richtig (vor dem Verschwinden) */
+        .item.matched-manual {
+            background-color: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        /* Status: Verschwinden */
+        .item.fade-out {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+        }
+
+        /* Farbcodes für die Lösung (bleiben sichtbar) */
+        .pair-1 { background-color: #e74c3c !important; color: white !important; border-color: #c0392b !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-2 { background-color: #3498db !important; color: white !important; border-color: #2980b9 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-3 { background-color: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-4 { background-color: #f1c40f !important; color: #2c3e50 !important; border-color: #f39c12 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-5 { background-color: #9b59b6 !important; color: white !important; border-color: #8e44ad !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-6 { background-color: #e67e22 !important; color: white !important; border-color: #d35400 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-7 { background-color: #1abc9c !important; color: white !important; border-color: #16a085 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+        .pair-8 { background-color: #34495e !important; color: white !important; border-color: #2c3e50 !important; opacity: 1 !important; transform: scale(1) !important; pointer-events: none; }
+
+        h2 { font-size: 1rem; color: #7f8c8d; text-transform: uppercase; margin-bottom: 10px; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .btn-solution { background: #f39c12; }
+        .btn-reset { background: var(--primary); }
+
+        #feedback { margin-top: 20px; font-weight: bold; min-height: 24px; color: var(--success); }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; border-color: var(--error) !important; }
+
+        @media (max-width: 768px) {
+            .matching-grid { grid-template-columns: 1fr; }
+            .container { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Правила и примеры</h1>
+    <p class="desc">
+        <b>Training:</b> Verbinde Regel und Beispiel. Richtige Paare verschwinden.<br>
+        <b>Lösung:</b> Alle Paare werden dauerhaft farblich markiert.
+    </p>
+
+    <div class="matching-grid">
+        <div class="column" id="col-rules">
+            <h2>Grammatikalische Regel</h2>
+        </div>
+        <div class="column" id="col-examples">
+            <h2>Textbeispiel</h2>
+        </div>
+    </div>
+
+    <div id="feedback"></div>
+
+    <div class="controls">
+        <button class="btn btn-solution" onclick="showSolution()">Lösung anzeigen</button>
+        <button class="btn btn-reset" onclick="initGame()">Neustart</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        { id: 1, rule: "200-900 im Präpositiv (Kongruenz)", example: "о двухстах сотрудниках" },
+        { id: 2, rule: "200-900 im Dativ (Kongruenz)", example: "пятистам актерам" },
+        { id: 3, rule: "200-900 im Genitiv (Rektion)", example: "пятисот актрис" },
+        { id: 4, rule: "200-900 im Instrumental (Kongruenz)", example: "пятьюстами актерами" },
+        { id: 5, rule: "1000 im Dativ (Rektion)", example: "к тысяче конвертов" },
+        { id: 6, rule: "1 Million im Genitiv (Rektion)", example: "больше миллиона студентов" },
+        { id: 7, rule: "1 Milliarde im Instrumental (Rektion)", example: "миллиардом жителей" },
+        { id: 8, rule: "200-900 im Nominativ (Rektion)", example: "двести зданий" }
+    ];
+
+    let selectedRule = null;
+    let selectedExample = null;
+    let isProcessing = false;
+    let solvedCount = 0;
+
+    function initGame() {
+        const colRules = document.getElementById('col-rules');
+        const colExamples = document.getElementById('col-examples');
+        document.getElementById('feedback').innerText = "";
+        
+        // Header erhalten
+        colRules.innerHTML = "<h2>Grammatikalische Regel</h2>";
+        colExamples.innerHTML = "<h2>Textbeispiel</h2>";
+        
+        selectedRule = null;
+        selectedExample = null;
+        isProcessing = false;
+        solvedCount = 0;
+
+        const shuffledRules = [...quizData].sort(() => Math.random() - 0.5);
+        const shuffledExamples = [...quizData].sort(() => Math.random() - 0.5);
+
+        shuffledRules.forEach(item => {
+            colRules.appendChild(createItem(item.rule, item.id, 'rule'));
+        });
+
+        shuffledExamples.forEach(item => {
+            colExamples.appendChild(createItem(item.example, item.id, 'example'));
+        });
+    }
+
+    function createItem(text, id, type) {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerText = text;
+        div.dataset.id = id;
+        div.dataset.type = type;
+        div.onclick = handleItemClick;
+        return div;
+    }
+
+    function handleItemClick() {
+        if (isProcessing || this.classList.contains('matched-manual')) return;
+
+        if (this.dataset.type === 'rule') {
+            if (selectedRule) selectedRule.classList.remove('selected');
+            selectedRule = this;
+        } else {
+            if (selectedExample) selectedExample.classList.remove('selected');
+            selectedExample = this;
+        }
+        this.classList.add('selected');
+
+        if (selectedRule && selectedExample) {
+            checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        isProcessing = true;
+        if (selectedRule.dataset.id === selectedExample.dataset.id) {
+            // Erfolg
+            const r = selectedRule;
+            const e = selectedExample;
+            r.classList.add('matched-manual');
+            e.classList.add('matched-manual');
+            solvedCount++;
+
+            setTimeout(() => {
+                r.classList.add('fade-out');
+                e.classList.add('fade-out');
+                isProcessing = false;
+                if (solvedCount === quizData.length) {
+                    document.getElementById('feedback').innerText = "Hervorragend! Alles zugeordnet.";
+                }
+            }, 600);
+
+            selectedRule = null;
+            selectedExample = null;
+        } else {
+            // Fehler
+            selectedRule.classList.add('shake');
+            selectedExample.classList.add('shake');
+            setTimeout(() => {
+                selectedRule.classList.remove('selected', 'shake');
+                selectedExample.classList.remove('selected', 'shake');
+                selectedRule = null;
+                selectedExample = null;
+                isProcessing = false;
+            }, 800);
+        }
+    }
+
+    function showSolution() {
+        const allItems = document.querySelectorAll('.item');
+        
+        // Zuerst alle wieder einblenden
+        allItems.forEach(item => {
+            item.classList.remove('fade-out', 'selected', 'matched-manual', 'shake');
+            const id = item.dataset.id;
+            item.classList.add(`pair-${id}`);
+        });
+
+        document.getElementById('feedback').innerText = "Lösung: Jedes Paar hat eine eigene Farbe.";
+    }
+
+    initGame();
+</script>
+
+</body>
+</html>
