@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathe-Check: Russische Hunderter</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --card-white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-white);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .progress {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        /* Gleichungs-Karte */
+        .math-card {
+            background: #f8f9fa;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .equation {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .case-label {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        /* Antwort-Optionen */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .option-btn:active { transform: scale(0.95); }
+
+        .option-btn.correct {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+
+        /* Feedback & Controls */
+        #feedback {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-next {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
+
+        .btn-solution {
+            background: none;
+            border: none;
+            color: #95a5a6;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 480px) {
+            .equation { font-size: 2rem; }
+            .options-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <div class="progress" id="progress">Aufgabe 1 von 8</div>
+    
+    <div class="math-card">
+        <span class="equation" id="equation-text">5 × 100</span>
+        <span class="case-label" id="case-text">Dativ</span>
+    </div>
+
+    <div class="options-grid" id="options-grid">
+        <!-- Buttons werden hier eingefügt -->
+    </div>
+
+    <div id="feedback"></div>
+
+    <div class="controls">
+        <button class="btn-next" id="next-btn" onclick="nextQuestion()">Nächste Aufgabe</button>
+        <button class="btn-solution" id="solution-btn" onclick="showSolution()">Lösung anzeigen</button>
+        <button class="btn-solution" onclick="location.reload()" style="text-decoration: none;">↺ Neustart</button>
+    </div>
+</div>
+
+<script>
+    const quizData = [
+        { eq: "2 × 100", case: "Genitiv", options: ["двести", "двухсот", "двумстам"], correct: 1, expl: "Genitiv von 200: двухсот." },
+        { eq: "5 × 100", case: "Dativ", options: ["пятьсот", "пятисот", "пятистам"], correct: 2, expl: "Dativ von 500: пятистам." },
+        { eq: "3 × 100", case: "Präpositiv", options: ["триста", "трехсот", "трехстах"], correct: 2, expl: "Präpositiv von 300: (о) трехстах." },
+        { eq: "8 × 100", case: "Instrumental", options: ["восемьсот", "восемьюстами", "восьмистам"], correct: 1, expl: "Instrumental von 800: восемьюстами." },
+        { eq: "4 × 100", case: "Genitiv", options: ["четыреста", "четырехсот", "четырехстах"], correct: 1, expl: "Genitiv von 400: четырехсот." },
+        { eq: "9 × 100", case: "Dativ", options: ["девятистам", "девятьсот", "девятисот"], correct: 0, expl: "Dativ von 900: девятистам." },
+        { eq: "6 × 100", case: "Nominativ", options: ["шестисот", "шестьсот", "шестистам"], correct: 1, expl: "Nominativ von 600: шестьсот." },
+        { eq: "7 × 100", case: "Instrumental", options: ["семьюстами", "семьсот", "семисот"], correct: 0, expl: "Instrumental von 700: семьюстами." }
+    ];
+
+    let currentIdx = 0;
+    let answered = false;
+
+    function loadQuestion() {
+        answered = false;
+        const data = quizData[currentIdx];
+        
+        document.getElementById('progress').innerText = `Aufgabe ${currentIdx + 1} von ${quizData.length}`;
+        document.getElementById('equation-text').innerText = data.eq;
+        document.getElementById('case-text').innerText = data.case;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('next-btn').style.display = "none";
+
+        const grid = document.getElementById('options-grid');
+        grid.innerHTML = '';
+
+        data.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(index, btn);
+            grid.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIdx, btn) {
+        if (answered) return;
+        answered = true;
+
+        const data = quizData[currentIdx];
+        const feedback = document.getElementById('feedback');
+
+        if (selectedIdx === data.correct) {
+            btn.classList.add('correct');
+            feedback.innerHTML = `<span style="color:var(--success)">Richtig!</span> ${data.expl}`;
+        } else {
+            btn.classList.add('wrong');
+            feedback.innerHTML = `<span style="color:var(--error)">Falsch.</span> ${data.expl}`;
+            // Korrekte Option markieren
+            document.querySelectorAll('.option-btn')[data.correct].classList.add('correct');
+        }
+
+        document.getElementById('next-btn').style.display = "block";
+    }
+
+    function showSolution() {
+        if (answered) return;
+        const data = quizData[currentIdx];
+        checkAnswer(data.correct, document.querySelectorAll('.option-btn')[data.correct]);
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < quizData.length) {
+            loadQuestion();
+        } else {
+            showFinalResult();
+        }
+    }
+
+    function showFinalResult() {
+        document.getElementById('quiz-container').innerHTML = `
+            <h2>Hervorragend! 🎓</h2>
+            <p>Du hast alle mathematischen Gleichungen korrekt den russischen Fallformen zugeordnet.</p>
+            <button class="btn-next" style="display:block; width: 100%;" onclick="location.reload()">Neustart</button>
+        `;
+    }
+
+    // Initialisierung
+    loadQuestion();
+</script>
+
+</body>
+</html>
