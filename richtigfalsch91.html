@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Richtig oder Falsch: Russische Kongruenz</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 20px; }
+        
+        .progress {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+        /* Satz-Display */
+        .sentence-box {
+            background: #fcfcfc;
+            border: 2px solid #eee;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            line-height: 1.5;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .highlight {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-correct { background-color: var(--success); }
+        .btn-wrong { background-color: var(--error); }
+        .btn:active { transform: scale(0.95); }
+
+        /* Korrektur-Bereich */
+        .correction-area {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #eee;
+        }
+
+        .correction-title {
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .opt-btn {
+            background: white;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .opt-btn:hover { background: var(--accent); color: white; }
+
+        /* Feedback */
+        #feedback {
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+
+        .next-btn {
+            margin-top: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 12px 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+        }
+
+        @media (max-width: 500px) {
+            .options-grid { grid-template-columns: 1fr; }
+            .sentence-box { font-size: 1.1rem; }
+            .btn { padding: 12px 15px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="quiz-container">
+    <div class="progress" id="progress">Aufgabe 1 von 8</div>
+    
+    <div class="sentence-box" id="sentence-box">
+        <!-- Satz wird hier eingefügt -->
+    </div>
+
+    <div class="button-group" id="main-controls">
+        <button class="btn btn-correct" onclick="handleDecision(true)">Richtig</button>
+        <button class="btn btn-wrong" onclick="handleDecision(false)">Falsch</button>
+    </div>
+
+    <div class="correction-area" id="correction-area">
+        <div class="correction-title">Wähle die korrekte Form:</div>
+        <div class="options-grid" id="options-grid">
+            <!-- Korrekturmöglichkeiten -->
+        </div>
+    </div>
+
+    <div id="feedback"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">Nächste Aufgabe</button>
+</div>
+
+<script>
+    const questions = [
+        {
+            text: "Я вижу пятьсот <span class='highlight'>зданиям</span>.",
+            isCorrect: false,
+            options: ["зданий", "здания", "здание", "зданиях"],
+            correctOption: 0,
+            expl: "Falsch! Nach 'пятьсот' (Nom/Akk) braucht man den Genitiv Plural (зданий)."
+        },
+        {
+            text: "Директор интересуется <span class='highlight'>пятьюстами сотрудниками</span>.",
+            isCorrect: true,
+            expl: "Richtig! Nach 'пятьюстами' (Instrumental) steht auch das Substantiv im Instrumental."
+        },
+        {
+            text: "В списке нет <span class='highlight'>двухсот сотрудников</span>.",
+            isCorrect: true,
+            expl: "Richtig! Nach 'двухсот' (Genitiv) folgt der Genitiv Plural."
+        },
+        {
+            text: "Мы говорили о <span class='highlight'>пятьсот актерах</span>.",
+            isCorrect: false,
+            options: ["пятистах", "пятисот", "пятистам", "пятьюстами"],
+            correctOption: 0,
+            expl: "Falsch! Nach 'о' (Präpositiv) muss die Zahl auch im Präpositiv stehen (о пятистах)."
+        },
+        {
+            text: "Они написали <span class='highlight'>миллиону студентов</span>.",
+            isCorrect: true,
+            expl: "Richtig! 'Million' verlangt immer den Genitiv Plural, egal in welchem Fall es steht."
+        },
+        {
+            text: "Я вижу <span class='highlight'>тысячу конверты</span>.",
+            isCorrect: false,
+            options: ["конвертов", "конверта", "конвертами", "конверте"],
+            correctOption: 0,
+            expl: "Falsch! Nach 'тысяча' steht das Substantiv immer im Genitiv Plural (конвертов)."
+        },
+        {
+            text: "Зрители подарили цветы <span class='highlight'>пятистам актерам</span>.",
+            isCorrect: true,
+            expl: "Richtig! Dativ-Kongruenz zwischen Zahl und Substantiv."
+        },
+        {
+            text: "Он гордится <span class='highlight'>двумяста сотрудниками</span>.",
+            isCorrect: false,
+            options: ["двумястами", "двухстах", "двухсот", "двумстам"],
+            correctOption: 0,
+            expl: "Falsch! Der Instrumental von 200 lautet 'двумястами'."
+        }
+    ];
+
+    let currentIdx = 0;
+    let stage = 'deciding'; // deciding | correcting
+
+    function loadQuestion() {
+        const q = questions[currentIdx];
+        document.getElementById('progress').innerText = `Aufgabe ${currentIdx + 1} von ${questions.length}`;
+        document.getElementById('sentence-box').innerHTML = q.text;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('feedback').style.color = "var(--primary)";
+        document.getElementById('main-controls').style.display = "flex";
+        document.getElementById('correction-area').style.display = "none";
+        document.getElementById('next-btn').style.display = "none";
+        stage = 'deciding';
+    }
+
+    function handleDecision(userSaysCorrect) {
+        const q = questions[currentIdx];
+        const feedback = document.getElementById('feedback');
+
+        if (userSaysCorrect === q.isCorrect) {
+            // User hat richtig bewertet
+            if (q.isCorrect) {
+                feedback.innerText = "Korrekt! " + q.expl;
+                feedback.style.color = "var(--success)";
+                showNext();
+            } else {
+                feedback.innerText = "Stimmt, der Satz ist falsch! Aber was ist die richtige Form?";
+                feedback.style.color = "var(--accent)";
+                showCorrection();
+            }
+        } else {
+            // User hat falsch bewertet
+            if (q.isCorrect) {
+                feedback.innerText = "Nein, dieser Satz ist eigentlich richtig!";
+                feedback.style.color = "var(--error)";
+                showNext();
+            } else {
+                feedback.innerText = "Doch, dieser Satz enthält einen Fehler!";
+                feedback.style.color = "var(--error)";
+                showCorrection();
+            }
+        }
+    }
+
+    function showCorrection() {
+        stage = 'correcting';
+        document.getElementById('main-controls').style.display = "none";
+        const area = document.getElementById('correction-area');
+        const grid = document.getElementById('options-grid');
+        const q = questions[currentIdx];
+        
+        area.style.display = "block";
+        grid.innerHTML = "";
+        
+        q.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkCorrection(idx);
+            grid.appendChild(btn);
+        });
+    }
+
+    function checkCorrection(selectedIdx) {
+        const q = questions[currentIdx];
+        const feedback = document.getElementById('feedback');
+        
+        if (selectedIdx === q.correctOption) {
+            feedback.innerText = "Genau! " + q.expl;
+            feedback.style.color = "var(--success)";
+            showNext();
+        } else {
+            feedback.innerText = "Das ist leider nicht die richtige Form. Versuch es noch einmal!";
+            feedback.style.color = "var(--error)";
+        }
+    }
+
+    function showNext() {
+        document.getElementById('correction-area').style.display = "none";
+        document.getElementById('main-controls').style.display = "none";
+        document.getElementById('next-btn').style.display = "inline-block";
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < questions.length) {
+            loadQuestion();
+        } else {
+            showFinalResult();
+        }
+    }
+
+    function showFinalResult() {
+        document.getElementById('quiz-container').innerHTML = `
+            <h1>Übung beendet!</h1>
+            <p>Du hast alle Sätze bearbeitet und die Kongruenz-Regeln erfolgreich angewendet.</p>
+            <button class="btn btn-correct" onclick="location.reload()">Neustart</button>
+        `;
+    }
+
+    loadVoices = () => {}; // Platzhalter falls TTS gewünscht
+    window.onload = loadQuestion;
+</script>
+
+</body>
+</html>
